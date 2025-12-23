@@ -1,14 +1,24 @@
-import { Link } from 'react-router-dom';
-import { ShoppingCart, Search, Menu, User, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingCart, Search, Menu, User, X, LogOut, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export function Header() {
   const { totalItems } = useCart();
+  const { user, isAdmin, signOut } = useAuth();
+  const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const navLinks = [
@@ -17,6 +27,11 @@ export function Header() {
     { name: 'Group Buys', href: '/group-buys' },
     { name: 'Categories', href: '/categories' },
   ];
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
@@ -37,6 +52,14 @@ export function Header() {
               {link.name}
             </Link>
           ))}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+            >
+              Admin
+            </Link>
+          )}
         </nav>
 
         {/* Right Side Actions */}
@@ -70,9 +93,37 @@ export function Header() {
           </div>
 
           {/* User */}
-          <Button variant="ghost" size="icon" className="hidden sm:flex">
-            <User className="h-4 w-4" />
-          </Button>
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="hidden sm:flex">
+                  <User className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <div className="px-2 py-1.5 text-sm font-medium">
+                  {user.email}
+                </div>
+                <DropdownMenuSeparator />
+                {isAdmin && (
+                  <DropdownMenuItem onClick={() => navigate('/admin')}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    Admin Dashboard
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link to="/auth">
+              <Button variant="ghost" size="icon" className="hidden sm:flex">
+                <User className="h-4 w-4" />
+              </Button>
+            </Link>
+          )}
 
           {/* Cart */}
           <Link to="/cart">
@@ -106,12 +157,34 @@ export function Header() {
                     {link.name}
                   </Link>
                 ))}
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    className="text-lg font-medium text-primary hover:text-primary/80 transition-colors"
+                  >
+                    Admin Dashboard
+                  </Link>
+                )}
                 <div className="border-t border-border pt-4 mt-4">
                   <Input placeholder="Search products..." className="mb-4" />
-                  <Button className="w-full" variant="outline">
-                    <User className="h-4 w-4 mr-2" />
-                    Sign In
-                  </Button>
+                  {user ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground truncate">
+                        {user.email}
+                      </p>
+                      <Button className="w-full" variant="outline" onClick={handleSignOut}>
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Sign Out
+                      </Button>
+                    </div>
+                  ) : (
+                    <Link to="/auth">
+                      <Button className="w-full" variant="outline">
+                        <User className="h-4 w-4 mr-2" />
+                        Sign In
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               </nav>
             </SheetContent>
