@@ -1,0 +1,76 @@
+import { Link } from 'react-router-dom';
+import { Users, Clock } from 'lucide-react';
+import { GroupBuy } from '@/types';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+
+interface GroupBuyCardProps {
+  groupBuy: GroupBuy;
+}
+
+export function GroupBuyCard({ groupBuy }: GroupBuyCardProps) {
+  const progress = (groupBuy.currentParticipants / groupBuy.minParticipants) * 100;
+  const daysLeft = Math.ceil(
+    (groupBuy.deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+  );
+  const discountedPrice =
+    groupBuy.product.basePrice * (1 - groupBuy.discountPercentage / 100);
+
+  return (
+    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-border bg-card">
+      <div className="relative aspect-[4/3] overflow-hidden">
+        <img
+          src={groupBuy.product.images[0]}
+          alt={groupBuy.product.name}
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent" />
+        <Badge className="absolute top-3 left-3 bg-accent text-accent-foreground text-lg px-3 py-1">
+          {groupBuy.discountPercentage}% OFF
+        </Badge>
+        <div className="absolute bottom-3 left-3 right-3">
+          <h3 className="text-lg font-bold text-primary-foreground line-clamp-1">
+            {groupBuy.product.name}
+          </h3>
+        </div>
+      </div>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-sm text-muted-foreground line-through">
+              ${groupBuy.product.basePrice.toFixed(2)}
+            </p>
+            <p className="text-xl font-bold text-primary">
+              ${discountedPrice.toFixed(2)}
+            </p>
+          </div>
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            <span className="text-sm">{daysLeft} days left</span>
+          </div>
+        </div>
+
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <Users className="h-4 w-4" />
+              <span>
+                {groupBuy.currentParticipants}/{groupBuy.minParticipants} joined
+              </span>
+            </div>
+            <span className="text-primary font-medium">
+              {Math.round(progress)}%
+            </span>
+          </div>
+          <Progress value={progress} className="h-2" />
+        </div>
+
+        <Link to={`/product/${groupBuy.product.id}?groupBuy=${groupBuy.id}`}>
+          <Button className="w-full">Join Group Buy</Button>
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
