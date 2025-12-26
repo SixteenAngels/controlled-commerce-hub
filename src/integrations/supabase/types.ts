@@ -144,6 +144,47 @@ export type Database = {
           },
         ]
       }
+      chat_messages: {
+        Row: {
+          admin_id: string | null
+          created_at: string
+          id: string
+          is_from_admin: boolean | null
+          is_read: boolean | null
+          message: string
+          order_id: string | null
+          user_id: string
+        }
+        Insert: {
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          is_from_admin?: boolean | null
+          is_read?: boolean | null
+          message: string
+          order_id?: string | null
+          user_id: string
+        }
+        Update: {
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          is_from_admin?: boolean | null
+          is_read?: boolean | null
+          message?: string
+          order_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coupons: {
         Row: {
           code: string
@@ -277,6 +318,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          is_broadcast: boolean | null
+          is_read: boolean | null
+          message: string
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_broadcast?: boolean | null
+          is_read?: boolean | null
+          message: string
+          title: string
+          type?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_broadcast?: boolean | null
+          is_read?: boolean | null
+          message?: string
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       order_items: {
         Row: {
@@ -650,6 +727,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      receipts: {
+        Row: {
+          generated_at: string
+          id: string
+          order_id: string
+          pdf_url: string | null
+          qr_code: string | null
+          receipt_number: string
+        }
+        Insert: {
+          generated_at?: string
+          id?: string
+          order_id: string
+          pdf_url?: string | null
+          qr_code?: string | null
+          receipt_number: string
+        }
+        Update: {
+          generated_at?: string
+          id?: string
+          order_id?: string
+          pdf_url?: string | null
+          qr_code?: string | null
+          receipt_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reviews: {
         Row: {
