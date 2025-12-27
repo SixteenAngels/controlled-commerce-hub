@@ -30,8 +30,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Package } from 'lucide-react';
 import { useCategories } from '@/hooks/useCategories';
+import { ProductImageUpload, uploadProductImages } from './ProductImageUpload';
 
 interface ProductForm {
   name: string;
@@ -62,6 +63,8 @@ export function AdminProducts() {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProductForm>(defaultForm);
+  const [pendingImages, setPendingImages] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<{ id: string; image_url: string; order_index: number }[]>([]);
 
   const { data: categories } = useCategories();
 
@@ -70,7 +73,7 @@ export function AdminProducts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('*, categories(name)')
+        .select('*, categories(name), product_images(id, image_url, order_index)')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
@@ -79,7 +82,7 @@ export function AdminProducts() {
 
   const createMutation = useMutation({
     mutationFn: async (data: ProductForm) => {
-      const { error } = await supabase.from('products').insert({
+      const { data: product, error } = await supabase.from('products').insert({
         name: data.name,
         description: data.description,
         item_code: data.item_code,
@@ -89,8 +92,19 @@ export function AdminProducts() {
         is_flash_deal: data.is_flash_deal,
         is_free_shipping: data.is_free_shipping,
         is_active: data.is_active,
-      });
+      }).select().single();
       if (error) throw error;
+
+      // Upload images if any
+      if (pendingImages.length > 0 && product) {
+        const imageUrls = await uploadProductImages(product.id, pendingImages);
+        const imageRecords = imageUrls.map((url, index) => ({
+          product_id: product.id,
+          image_url: url,
+          order_index: index,
+        }));
+        await supabase.from('product_images').insert(imageRecords);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
@@ -98,6 +112,7 @@ export function AdminProducts() {
       toast.success('Product created successfully');
       setIsOpen(false);
       setForm(defaultForm);
+      setPendingImages([]);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -121,6 +136,20 @@ export function AdminProducts() {
         })
         .eq('id', id);
       if (error) throw error;
+
+      // Upload new images if any
+      if (pendingImages.length > 0) {
+        const currentMaxIndex = existingImages.length > 0 
+          ? Math.max(...existingImages.map(i => i.order_index)) + 1 
+          : 0;
+        const imageUrls = await uploadProductImages(id, pendingImages);
+        const imageRecords = imageUrls.map((url, index) => ({
+          product_id: id,
+          image_url: url,
+          order_index: currentMaxIndex + index,
+        }));
+        await supabase.from('product_images').insert(imageRecords);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
@@ -129,6 +158,8 @@ export function AdminProducts() {
       setIsOpen(false);
       setEditingId(null);
       setForm(defaultForm);
+      setPendingImages([]);
+      setExistingImages([]);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -163,6 +194,8 @@ export function AdminProducts() {
       is_free_shipping: product.is_free_shipping || false,
       is_active: product.is_active ?? true,
     });
+    setExistingImages((product as any).product_images || []);
+    setPendingImages([]);
     setIsOpen(true);
   };
 
@@ -179,6 +212,8 @@ export function AdminProducts() {
     setIsOpen(false);
     setEditingId(null);
     setForm(defaultForm);
+    setPendingImages([]);
+    setExistingImages([]);
   };
 
   return (
@@ -308,6 +343,16 @@ export function AdminProducts() {
                 </div>
               </div>
 
+              {/* Image Upload Section */}
+              <div className="border-t border-border pt-4">
+                <ProductImageUpload
+                  productId={editingId || undefined}
+                  existingImages={existingImages}
+                  pendingImages={pendingImages}
+                  onImagesChange={setPendingImages}
+                />
+              </div>
+
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={handleClose}>
                   Cancel
@@ -337,6 +382,7 @@ export function AdminProducts() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-16">Image</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Price</TableHead>
@@ -345,47 +391,65 @@ export function AdminProducts() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products?.map((product) => (
-                  <TableRow key={product.id}>
-                    <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell>
-                      {(product.categories as { name: string } | null)?.name || '-'}
-                    </TableCell>
-                    <TableCell>${Number(product.base_price).toFixed(2)}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs rounded-full ${
-                          product.is_active
-                            ? 'bg-primary/10 text-primary'
-                            : 'bg-muted text-muted-foreground'
-                        }`}
-                      >
-                        {product.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(product)}
+                {products?.map((product) => {
+                  const images = (product as any).product_images as { image_url: string }[] | undefined;
+                  const firstImage = images?.[0]?.image_url;
+                  
+                  return (
+                    <TableRow key={product.id}>
+                      <TableCell>
+                        {firstImage ? (
+                          <img
+                            src={firstImage}
+                            alt={product.name}
+                            className="w-12 h-12 object-cover rounded-md border border-border"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
+                            <Package className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium">{product.name}</TableCell>
+                      <TableCell>
+                        {(product.categories as { name: string } | null)?.name || '-'}
+                      </TableCell>
+                      <TableCell>${Number(product.base_price).toFixed(2)}</TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs rounded-full ${
+                            product.is_active
+                              ? 'bg-primary/10 text-primary'
+                              : 'bg-muted text-muted-foreground'
+                          }`}
                         >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteMutation.mutate(product.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {product.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(product)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteMutation.mutate(product.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
                 {products?.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       No products yet. Add your first product to get started.
                     </TableCell>
                   </TableRow>

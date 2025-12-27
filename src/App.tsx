@@ -13,6 +13,7 @@ import GroupBuys from "./pages/GroupBuys";
 import Categories from "./pages/Categories";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
+import TrackOrder from "./pages/TrackOrder";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,8 @@ const App = () => (
               <Route path="/categories" element={<Categories />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/admin/*" element={<Admin />} />
+              <Route path="/track-order" element={<TrackOrder />} />
+              <Route path="/track-order/:orderId" element={<TrackOrder />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
