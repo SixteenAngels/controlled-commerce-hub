@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Minus, Plus, Ship, Plane, Package, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 
 export default function Cart() {
+  const navigate = useNavigate();
   const {
     items,
     selectedShipping,
@@ -40,8 +41,7 @@ export default function Cart() {
       toast.error('Please select a shipping method');
       return;
     }
-    toast.success('Proceeding to checkout...');
-    // Checkout logic would go here
+    navigate('/checkout');
   };
 
   if (items.length === 0) {

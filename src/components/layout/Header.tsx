@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Search, Menu, User, X, LogOut, Settings } from 'lucide-react';
+import { ShoppingCart, Search, Menu, User, X, LogOut, Settings, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCart } from '@/contexts/CartContext';
@@ -105,6 +105,10 @@ export function Header() {
                   {user.email}
                 </div>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('/my-orders')}>
+                  <Package className="mr-2 h-4 w-4" />
+                  My Orders
+                </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate('/admin')}>
                     <Settings className="mr-2 h-4 w-4" />
