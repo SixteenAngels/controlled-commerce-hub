@@ -1,0 +1,609 @@
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, MapPin, Plus, Ship, Plane, Package, CreditCard, Check } from 'lucide-react';
+import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
+import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface Address {
+  id: string;
+  full_name: string;
+  phone: string;
+  address_line1: string;
+  address_line2?: string;
+  city: string;
+  state?: string;
+  country: string;
+  postal_code?: string;
+  is_default: boolean;
+  label?: string;
+}
+
+interface ShippingClass {
+  id: string;
+  name: string;
+  base_price: number;
+  estimated_days_min: number;
+  estimated_days_max: number;
+  shipping_type: {
+    id: string;
+    name: string;
+  };
+}
+
+declare global {
+  interface Window {
+    PaystackPop: any;
+  }
+}
+
+export default function Checkout() {
+  const navigate = useNavigate();
+  const { user, isLoading: authLoading } = useAuth();
+  const { items, subtotal, clearCart } = useCart();
+  
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('');
+  const [shippingClasses, setShippingClasses] = useState<ShippingClass[]>([]);
+  const [selectedShippingId, setSelectedShippingId] = useState<string>('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
+  const [newAddress, setNewAddress] = useState({
+    full_name: '',
+    phone: '',
+    address_line1: '',
+    address_line2: '',
+    city: '',
+    state: '',
+    country: '',
+    postal_code: '',
+    label: '',
+  });
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      toast.error('Please sign in to checkout');
+      navigate('/auth');
+    }
+  }, [user, authLoading, navigate]);
+
+  // Redirect if cart is empty
+  useEffect(() => {
+    if (items.length === 0) {
+      navigate('/cart');
+    }
+  }, [items, navigate]);
+
+  // Load Paystack script
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://js.paystack.co/v1/inline.js';
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  // Fetch addresses and shipping classes
+  useEffect(() => {
+    if (user) {
+      fetchAddresses();
+      fetchShippingClasses();
+    }
+  }, [user]);
+
+  const fetchAddresses = async () => {
+    const { data, error } = await supabase
+      .from('addresses')
+      .select('*')
+      .order('is_default', { ascending: false });
+    
+    if (data) {
+      setAddresses(data);
+      const defaultAddress = data.find(a => a.is_default);
+      if (defaultAddress) {
+        setSelectedAddressId(defaultAddress.id);
+      } else if (data.length > 0) {
+        setSelectedAddressId(data[0].id);
+      }
+    }
+  };
+
+  const fetchShippingClasses = async () => {
+    const { data, error } = await supabase
+      .from('shipping_classes')
+      .select(`
+        id,
+        name,
+        base_price,
+        estimated_days_min,
+        estimated_days_max,
+        shipping_type:shipping_types(id, name)
+      `)
+      .eq('is_active', true);
+    
+    if (data) {
+      setShippingClasses(data as unknown as ShippingClass[]);
+      if (data.length > 0) {
+        setSelectedShippingId(data[0].id);
+      }
+    }
+  };
+
+  const handleAddAddress = async () => {
+    if (!newAddress.full_name || !newAddress.phone || !newAddress.address_line1 || !newAddress.city || !newAddress.country) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('addresses')
+      .insert({
+        ...newAddress,
+        user_id: user?.id,
+        is_default: addresses.length === 0,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast.error('Failed to add address');
+      return;
+    }
+
+    if (data) {
+      setAddresses([...addresses, data]);
+      setSelectedAddressId(data.id);
+      setIsAddressDialogOpen(false);
+      setNewAddress({
+        full_name: '',
+        phone: '',
+        address_line1: '',
+        address_line2: '',
+        city: '',
+        state: '',
+        country: '',
+        postal_code: '',
+        label: '',
+      });
+      toast.success('Address added successfully');
+    }
+  };
+
+  const selectedShipping = shippingClasses.find(s => s.id === selectedShippingId);
+  const shippingCost = selectedShipping?.base_price || 0;
+  const total = subtotal + shippingCost;
+
+  const getShippingIcon = (typeName: string) => {
+    const lower = typeName.toLowerCase();
+    if (lower.includes('sea')) return <Ship className="h-5 w-5" />;
+    if (lower.includes('express')) return <Package className="h-5 w-5" />;
+    return <Plane className="h-5 w-5" />;
+  };
+
+  const handlePaystackPayment = async () => {
+    if (!selectedAddressId) {
+      toast.error('Please select a delivery address');
+      return;
+    }
+    if (!selectedShippingId) {
+      toast.error('Please select a shipping method');
+      return;
+    }
+    if (!user?.email) {
+      toast.error('User email not found');
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // Get Paystack public key from edge function
+      const { data: configData, error: configError } = await supabase.functions.invoke('get-paystack-key');
+      
+      if (configError || !configData?.publicKey) {
+        toast.error('Payment configuration error');
+        setIsProcessing(false);
+        return;
+      }
+
+      const handler = window.PaystackPop.setup({
+        key: configData.publicKey,
+        email: user.email,
+        amount: Math.round(total * 100), // Paystack expects amount in kobo/cents
+        currency: 'NGN',
+        ref: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        callback: async (response: { reference: string }) => {
+          await createOrder(response.reference);
+        },
+        onClose: () => {
+          setIsProcessing(false);
+          toast.info('Payment cancelled');
+        },
+      });
+
+      handler.openIframe();
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast.error('Payment initialization failed');
+      setIsProcessing(false);
+    }
+  };
+
+  const createOrder = async (paymentReference: string) => {
+    const selectedAddress = addresses.find(a => a.id === selectedAddressId);
+    
+    try {
+      // Create order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert([{
+          order_number: `IHS-${Date.now()}`, // Will be overwritten by trigger
+          user_id: user?.id as string,
+          subtotal,
+          shipping_price: shippingCost,
+          total_amount: total,
+          shipping_class_id: selectedShippingId,
+          shipping_address: JSON.parse(JSON.stringify(selectedAddress || {})),
+          status: 'pending' as const,
+          notes: `Payment ref: ${paymentReference}`,
+          estimated_delivery_start: new Date(Date.now() + (selectedShipping?.estimated_days_min || 7) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          estimated_delivery_end: new Date(Date.now() + (selectedShipping?.estimated_days_max || 14) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        }])
+        .select()
+        .single();
+
+      if (orderError) {
+        throw orderError;
+      }
+
+      // Create order items
+      const orderItems = items.map(item => ({
+        order_id: order.id,
+        product_variant_id: item.variant.id,
+        product_name: item.product.name,
+        variant_details: `${item.variant.color || ''}${item.variant.size ? ` • ${item.variant.size}` : ''}`,
+        quantity: item.quantity,
+        unit_price: item.variant.price,
+        total_price: item.variant.price * item.quantity,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        throw itemsError;
+      }
+
+      // Create initial tracking entry
+      await supabase
+        .from('order_tracking')
+        .insert({
+          order_id: order.id,
+          status: 'Order Placed',
+          location_name: 'Warehouse',
+          notes: 'Your order has been received and is being processed.',
+        });
+
+      clearCart();
+      toast.success('Order placed successfully!');
+      navigate(`/order-confirmation/${order.id}`);
+    } catch (error) {
+      console.error('Order creation error:', error);
+      toast.error('Failed to create order. Please contact support.');
+      setIsProcessing(false);
+    }
+  };
+
+  if (authLoading || items.length === 0) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container py-16">
+          <div className="text-center">Loading...</div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <main className="container py-8">
+        <Link
+          to="/cart"
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-6"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back to Cart
+        </Link>
+
+        <h1 className="text-3xl font-bold font-serif text-foreground mb-8">
+          Checkout
+        </h1>
+
+        <div className="grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            {/* Delivery Address */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  Delivery Address
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {addresses.length > 0 ? (
+                  <RadioGroup value={selectedAddressId} onValueChange={setSelectedAddressId}>
+                    <div className="space-y-3">
+                      {addresses.map((address) => (
+                        <div
+                          key={address.id}
+                          className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                            selectedAddressId === address.id
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                          onClick={() => setSelectedAddressId(address.id)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <RadioGroupItem value={address.id} id={address.id} className="mt-1" />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium text-foreground">{address.full_name}</span>
+                                {address.label && (
+                                  <span className="text-xs bg-muted px-2 py-0.5 rounded">{address.label}</span>
+                                )}
+                                {address.is_default && (
+                                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Default</span>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {address.address_line1}
+                                {address.address_line2 && `, ${address.address_line2}`}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {address.city}, {address.state} {address.postal_code}
+                              </p>
+                              <p className="text-sm text-muted-foreground">{address.country}</p>
+                              <p className="text-sm text-muted-foreground mt-1">{address.phone}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </RadioGroup>
+                ) : (
+                  <p className="text-muted-foreground mb-4">No saved addresses</p>
+                )}
+
+                <Dialog open={isAddressDialogOpen} onOpenChange={setIsAddressDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="mt-4">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add New Address
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Add New Address</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="col-span-2">
+                          <Label>Full Name *</Label>
+                          <Input
+                            value={newAddress.full_name}
+                            onChange={(e) => setNewAddress({ ...newAddress, full_name: e.target.value })}
+                          />
+                        </div>
+                        <div className="col-span-2 sm:col-span-1">
+                          <Label>Phone *</Label>
+                          <Input
+                            value={newAddress.phone}
+                            onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
+                          />
+                        </div>
+                        <div className="col-span-2 sm:col-span-1">
+                          <Label>Label (optional)</Label>
+                          <Input
+                            placeholder="Home, Office, etc."
+                            value={newAddress.label}
+                            onChange={(e) => setNewAddress({ ...newAddress, label: e.target.value })}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Label>Address Line 1 *</Label>
+                          <Input
+                            value={newAddress.address_line1}
+                            onChange={(e) => setNewAddress({ ...newAddress, address_line1: e.target.value })}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Label>Address Line 2</Label>
+                          <Input
+                            value={newAddress.address_line2}
+                            onChange={(e) => setNewAddress({ ...newAddress, address_line2: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label>City *</Label>
+                          <Input
+                            value={newAddress.city}
+                            onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label>State</Label>
+                          <Input
+                            value={newAddress.state}
+                            onChange={(e) => setNewAddress({ ...newAddress, state: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label>Country *</Label>
+                          <Input
+                            value={newAddress.country}
+                            onChange={(e) => setNewAddress({ ...newAddress, country: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label>Postal Code</Label>
+                          <Input
+                            value={newAddress.postal_code}
+                            onChange={(e) => setNewAddress({ ...newAddress, postal_code: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <Button onClick={handleAddAddress} className="w-full">
+                        Save Address
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </CardContent>
+            </Card>
+
+            {/* Shipping Method */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-primary" />
+                  Shipping Method
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RadioGroup value={selectedShippingId} onValueChange={setSelectedShippingId}>
+                  <div className="space-y-3">
+                    {shippingClasses.map((shipping) => (
+                      <div
+                        key={shipping.id}
+                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                          selectedShippingId === shipping.id
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                        onClick={() => setSelectedShippingId(shipping.id)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <RadioGroupItem value={shipping.id} id={shipping.id} />
+                            <div className="text-primary">
+                              {getShippingIcon(shipping.shipping_type?.name || '')}
+                            </div>
+                            <div>
+                              <p className="font-medium text-foreground">{shipping.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {shipping.estimated_days_min}-{shipping.estimated_days_max} days delivery
+                              </p>
+                            </div>
+                          </div>
+                          <p className="font-semibold text-foreground">
+                            ₦{shipping.base_price.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </RadioGroup>
+              </CardContent>
+            </Card>
+
+            {/* Order Items Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Order Items ({items.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {items.map((item) => (
+                    <div key={item.id} className="flex gap-3">
+                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                        <img
+                          src={item.product.images[0]}
+                          alt={item.product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-foreground line-clamp-1">{item.product.name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {item.variant.color} {item.variant.size && `• ${item.variant.size}`} × {item.quantity}
+                        </p>
+                      </div>
+                      <p className="font-medium text-foreground">
+                        ₦{(item.variant.price * item.quantity).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Order Summary */}
+          <div className="lg:col-span-1">
+            <Card className="sticky top-24">
+              <CardHeader>
+                <CardTitle>Order Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="text-foreground">₦{subtotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Shipping</span>
+                    <span className="text-foreground">₦{shippingCost.toLocaleString()}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-foreground">Total</span>
+                    <span className="text-xl font-bold text-primary">₦{total.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={handlePaystackPayment}
+                  disabled={isProcessing || !selectedAddressId || !selectedShippingId}
+                >
+                  {isProcessing ? (
+                    'Processing...'
+                  ) : (
+                    <>
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Pay with Paystack
+                    </>
+                  )}
+                </Button>
+
+                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <Check className="h-3 w-3" />
+                  Secure payment powered by Paystack
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
+}

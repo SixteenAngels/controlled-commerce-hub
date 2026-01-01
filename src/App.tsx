@@ -9,6 +9,9 @@ import Index from "./pages/Index";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import Cart from "./pages/Cart";
+import Checkout from "./pages/Checkout";
+import OrderConfirmation from "./pages/OrderConfirmation";
+import MyOrders from "./pages/MyOrders";
 import GroupBuys from "./pages/GroupBuys";
 import Categories from "./pages/Categories";
 import Auth from "./pages/Auth";
@@ -31,6 +34,9 @@ const App = () => (
               <Route path="/products" element={<Products />} />
               <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/cart" element={<Cart />} />
+              <Route path="/checkout" element={<Checkout />} />
+              <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+              <Route path="/my-orders" element={<MyOrders />} />
               <Route path="/group-buys" element={<GroupBuys />} />
               <Route path="/categories" element={<Categories />} />
               <Route path="/auth" element={<Auth />} />
