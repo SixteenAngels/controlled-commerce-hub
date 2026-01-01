@@ -6,6 +6,7 @@ import { Footer } from '@/components/layout/Footer';
 import { useProduct, ProductWithDetails } from '@/hooks/useProducts';
 import { useCart } from '@/contexts/CartContext';
 import { ProductVariant, Product } from '@/types';
+import { ProductReviews } from '@/components/products/ProductReviews';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -403,6 +404,11 @@ export default function ProductDetail() {
               </Button>
             </div>
           </div>
+        </div>
+
+        {/* Reviews Section */}
+        <div className="mt-12">
+          <ProductReviews productId={product.id} productName={product.name} />
         </div>
       </main>
       <Footer />
