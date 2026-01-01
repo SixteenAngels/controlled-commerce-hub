@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Plus, Ship, Plane, Package, CreditCard, Check } from 'lucide-react';
+import { ArrowLeft, MapPin, Plus, Ship, Plane, Package, CreditCard, Check, Tag, X } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useCart } from '@/contexts/CartContext';
@@ -41,6 +41,14 @@ interface ShippingClass {
   };
 }
 
+interface Coupon {
+  id: string;
+  code: string;
+  type: 'percentage' | 'fixed';
+  value: number;
+  min_order_amount: number | null;
+}
+
 declare global {
   interface Window {
     PaystackPop: any;
@@ -58,6 +66,9 @@ export default function Checkout() {
   const [selectedShippingId, setSelectedShippingId] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [newAddress, setNewAddress] = useState({
     full_name: '',
     phone: '',
@@ -184,7 +195,70 @@ export default function Checkout() {
 
   const selectedShipping = shippingClasses.find(s => s.id === selectedShippingId);
   const shippingCost = selectedShipping?.base_price || 0;
-  const total = subtotal + shippingCost;
+  
+  // Calculate discount
+  const calculateDiscount = () => {
+    if (!appliedCoupon) return 0;
+    if (appliedCoupon.type === 'percentage') {
+      return (subtotal * appliedCoupon.value) / 100;
+    }
+    return appliedCoupon.value;
+  };
+  
+  const discount = calculateDiscount();
+  const total = subtotal + shippingCost - discount;
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      toast.error('Please enter a coupon code');
+      return;
+    }
+    
+    setIsApplyingCoupon(true);
+    
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('code', couponCode.toUpperCase())
+      .eq('is_active', true)
+      .single();
+    
+    if (error || !data) {
+      toast.error('Invalid coupon code');
+      setIsApplyingCoupon(false);
+      return;
+    }
+    
+    // Check if coupon is expired
+    if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      toast.error('This coupon has expired');
+      setIsApplyingCoupon(false);
+      return;
+    }
+    
+    // Check minimum order amount
+    if (data.min_order_amount && subtotal < data.min_order_amount) {
+      toast.error(`Minimum order amount of ₦${data.min_order_amount.toLocaleString()} required`);
+      setIsApplyingCoupon(false);
+      return;
+    }
+    
+    // Check max uses
+    if (data.max_uses && data.current_uses >= data.max_uses) {
+      toast.error('This coupon has reached its usage limit');
+      setIsApplyingCoupon(false);
+      return;
+    }
+    
+    setAppliedCoupon(data as Coupon);
+    toast.success('Coupon applied successfully!');
+    setIsApplyingCoupon(false);
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+  };
 
   const getShippingIcon = (typeName: string) => {
     const lower = typeName.toLowerCase();
@@ -562,6 +636,47 @@ export default function Checkout() {
                 <CardTitle>Order Summary</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Coupon Code */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Tag className="h-4 w-4" />
+                    Coupon Code
+                  </Label>
+                  {appliedCoupon ? (
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20">
+                      <div>
+                        <p className="font-medium text-foreground">{appliedCoupon.code}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {appliedCoupon.type === 'percentage' 
+                            ? `${appliedCoupon.value}% off` 
+                            : `₦${appliedCoupon.value.toLocaleString()} off`}
+                        </p>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={removeCoupon}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter code"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        className="flex-1"
+                      />
+                      <Button 
+                        variant="outline" 
+                        onClick={handleApplyCoupon}
+                        disabled={isApplyingCoupon}
+                      >
+                        {isApplyingCoupon ? 'Applying...' : 'Apply'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
@@ -571,6 +686,12 @@ export default function Checkout() {
                     <span className="text-muted-foreground">Shipping</span>
                     <span className="text-foreground">₦{shippingCost.toLocaleString()}</span>
                   </div>
+                  {appliedCoupon && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Discount</span>
+                      <span>-₦{discount.toLocaleString()}</span>
+                    </div>
+                  )}
                   <Separator />
                   <div className="flex justify-between">
                     <span className="font-semibold text-foreground">Total</span>
