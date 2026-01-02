@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Search, Menu, User, X, LogOut, Settings, Package } from 'lucide-react';
+import { ShoppingCart, Search, Menu, User, X, LogOut, Settings, Package, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCart } from '@/contexts/CartContext';
@@ -108,6 +108,14 @@ export function Header() {
                 <DropdownMenuItem onClick={() => navigate('/my-orders')}>
                   <Package className="mr-2 h-4 w-4" />
                   My Orders
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/wishlist')}>
+                  <Heart className="mr-2 h-4 w-4" />
+                  Wishlist
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/profile')}>
+                  <User className="mr-2 h-4 w-4" />
+                  Profile
                 </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate('/admin')}>
