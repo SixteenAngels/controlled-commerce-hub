@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Filter, SlidersHorizontal, Loader2 } from 'lucide-react';
+import { Filter, SlidersHorizontal, Loader2, Search, X } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { ProductCard } from '@/components/products/ProductCard';
@@ -8,6 +8,9 @@ import { useProducts, ProductWithDetails } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import {
   Select,
   SelectContent,
@@ -67,8 +70,11 @@ function toProductCardFormat(product: ProductWithDetails) {
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialCategory = searchParams.get('category') || '';
+  const initialSearch = searchParams.get('q') || '';
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [sortBy, setSortBy] = useState('newest');
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [filters, setFilters] = useState({
     groupBuyOnly: false,
     flashDealsOnly: false,
@@ -78,14 +84,37 @@ export default function Products() {
   const { data: products, isLoading: productsLoading } = useProducts();
   const { data: categories, isLoading: categoriesLoading } = useCategories();
 
+  // Calculate max price from products
+  const maxPrice = useMemo(() => {
+    if (!products || products.length === 0) return 10000;
+    return Math.ceil(Math.max(...products.map((p) => p.base_price)) / 100) * 100;
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
     if (!products) return [];
 
     let filtered = [...products];
 
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(query) ||
+          (p.description?.toLowerCase().includes(query)) ||
+          (p.category_name?.toLowerCase().includes(query))
+      );
+    }
+
+    // Category filter
     if (selectedCategory) {
       filtered = filtered.filter((p) => p.category_name === selectedCategory);
     }
+
+    // Price range filter
+    filtered = filtered.filter(
+      (p) => p.base_price >= priceRange[0] && p.base_price <= priceRange[1]
+    );
 
     if (filters.groupBuyOnly) {
       filtered = filtered.filter((p) => p.is_group_buy_eligible);
@@ -109,12 +138,28 @@ export default function Products() {
       case 'rating':
         filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         break;
+      case 'name-asc':
+        filtered.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case 'name-desc':
+        filtered.sort((a, b) => b.name.localeCompare(a.name));
+        break;
       default:
         break;
     }
 
     return filtered;
-  }, [products, selectedCategory, sortBy, filters]);
+  }, [products, selectedCategory, sortBy, filters, searchQuery, priceRange]);
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    if (value) {
+      searchParams.set('q', value);
+    } else {
+      searchParams.delete('q');
+    }
+    setSearchParams(searchParams);
+  };
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category === selectedCategory ? '' : category);
@@ -132,14 +177,34 @@ export default function Products() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container py-8">
-        {/* Page Header */}
+        {/* Page Header with Search */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold font-serif text-foreground mb-2">
             All Products
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mb-4">
             Discover {filteredProducts.length} products from around the world
           </p>
+          {/* Search Bar */}
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                onClick={() => handleSearchChange('')}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Categories */}
@@ -177,6 +242,25 @@ export default function Products() {
                 <SheetTitle>Filter Products</SheetTitle>
               </SheetHeader>
               <div className="mt-6 space-y-6">
+                {/* Price Range */}
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-foreground">Price Range</h4>
+                  <div className="px-2">
+                    <Slider
+                      value={priceRange}
+                      onValueChange={(value) => setPriceRange(value as [number, number])}
+                      max={maxPrice}
+                      min={0}
+                      step={100}
+                      className="mb-4"
+                    />
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>${priceRange[0]}</span>
+                      <span>${priceRange[1]}</span>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-4">
                   <h4 className="font-semibold text-foreground">Product Type</h4>
                   <label className="flex items-center gap-3 cursor-pointer">
@@ -207,6 +291,21 @@ export default function Products() {
                     <span className="text-sm text-foreground">Free Shipping</span>
                   </label>
                 </div>
+
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setPriceRange([0, maxPrice]);
+                    setFilters({
+                      groupBuyOnly: false,
+                      flashDealsOnly: false,
+                      freeShippingOnly: false,
+                    });
+                  }}
+                >
+                  Reset Filters
+                </Button>
               </div>
             </SheetContent>
           </Sheet>
@@ -214,7 +313,7 @@ export default function Products() {
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-44">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
@@ -222,6 +321,8 @@ export default function Products() {
                 <SelectItem value="price-low">Price: Low to High</SelectItem>
                 <SelectItem value="price-high">Price: High to Low</SelectItem>
                 <SelectItem value="rating">Best Rating</SelectItem>
+                <SelectItem value="name-asc">Name: A to Z</SelectItem>
+                <SelectItem value="name-desc">Name: Z to A</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -250,6 +351,9 @@ export default function Products() {
               variant="link"
               onClick={() => {
                 setSelectedCategory('');
+                setSearchQuery('');
+                handleSearchChange('');
+                setPriceRange([0, maxPrice]);
                 setFilters({
                   groupBuyOnly: false,
                   flashDealsOnly: false,

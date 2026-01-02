@@ -17,6 +17,8 @@ import Categories from "./pages/Categories";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import TrackOrder from "./pages/TrackOrder";
+import Profile from "./pages/Profile";
+import Wishlist from "./pages/Wishlist";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +45,8 @@ const App = () => (
               <Route path="/admin/*" element={<Admin />} />
               <Route path="/track-order" element={<TrackOrder />} />
               <Route path="/track-order/:orderId" element={<TrackOrder />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/wishlist" element={<Wishlist />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
