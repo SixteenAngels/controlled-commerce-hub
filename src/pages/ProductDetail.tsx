@@ -7,6 +7,7 @@ import { useProduct, ProductWithDetails } from '@/hooks/useProducts';
 import { useCart } from '@/contexts/CartContext';
 import { ProductVariant, Product } from '@/types';
 import { ProductReviews } from '@/components/products/ProductReviews';
+import { RelatedProducts } from '@/components/products/RelatedProducts';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -405,6 +406,9 @@ export default function ProductDetail() {
             </div>
           </div>
         </div>
+
+        {/* Related Products */}
+        <RelatedProducts productId={product.id} categoryId={product.category_id} />
 
         {/* Reviews Section */}
         <div className="mt-12">
