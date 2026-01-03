@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Package, FolderTree, Users, LayoutDashboard, ShoppingCart, Truck, Tag, Star, MessageCircle, FileText, Bell, Settings } from 'lucide-react';
+import { Loader2, Package, FolderTree, Users, LayoutDashboard, ShoppingCart, Truck, Tag, Star, MessageCircle, FileText, Bell, Settings, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AdminProducts } from '@/components/admin/AdminProducts';
 import { AdminCategories } from '@/components/admin/AdminCategories';
@@ -16,6 +16,7 @@ import { AdminSupport } from '@/components/admin/AdminSupport';
 import { AdminReceipts } from '@/components/admin/AdminReceipts';
 import { AdminNotifications } from '@/components/admin/AdminNotifications';
 import { AdminSettings } from '@/components/admin/AdminSettings';
+import { LowStockAlerts } from '@/components/admin/LowStockAlerts';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -45,6 +46,7 @@ export default function Admin() {
   const navItems = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Products', href: '/admin/products', icon: Package },
+    { name: 'Stock Alerts', href: '/admin/stock', icon: AlertTriangle },
     { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
     { name: 'Shipping', href: '/admin/shipping', icon: Truck },
     { name: 'Group Buys', href: '/admin/group-buys', icon: Users },
@@ -141,6 +143,7 @@ export default function Admin() {
         <Routes>
           <Route path="/" element={<AdminDashboard />} />
           <Route path="/products" element={<AdminProducts />} />
+          <Route path="/stock" element={<LowStockAlerts />} />
           <Route path="/orders" element={<AdminOrders />} />
           <Route path="/shipping" element={<AdminShipping />} />
           <Route path="/group-buys" element={<AdminGroupBuys />} />
