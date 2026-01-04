@@ -1,9 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Package, Bell, BellOff } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { AlertTriangle, Package, Bell, BellOff, Save, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -26,6 +27,9 @@ const CRITICAL_STOCK_THRESHOLD = 5;
 
 export function LowStockAlerts() {
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editStock, setEditStock] = useState<number>(0);
+  const queryClient = useQueryClient();
 
   const { data: lowStockVariants, isLoading, refetch } = useQuery({
     queryKey: ['admin-low-stock-detailed'],
@@ -49,6 +53,38 @@ export function LowStockAlerts() {
       return (data || []) as LowStockVariant[];
     },
   });
+
+  const updateStockMutation = useMutation({
+    mutationFn: async ({ id, stock }: { id: string; stock: number }) => {
+      const { error } = await supabase
+        .from('product_variants')
+        .update({ stock })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Stock updated successfully');
+      setEditingId(null);
+      queryClient.invalidateQueries({ queryKey: ['admin-low-stock-detailed'] });
+    },
+    onError: () => {
+      toast.error('Failed to update stock');
+    },
+  });
+
+  const startEditing = (variant: LowStockVariant) => {
+    setEditingId(variant.id);
+    setEditStock(variant.stock || 0);
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditStock(0);
+  };
+
+  const saveStock = (id: string) => {
+    updateStockMutation.mutate({ id, stock: editStock });
+  };
 
   const dismissAlert = (id: string) => {
     setDismissedIds(prev => new Set([...prev, id]));
@@ -166,6 +202,7 @@ export function LowStockAlerts() {
               {visibleAlerts.map((variant) => {
                 const isCritical = (variant.stock || 0) <= CRITICAL_STOCK_THRESHOLD;
                 const isOutOfStock = variant.stock === 0;
+                const isEditing = editingId === variant.id;
 
                 return (
                   <div
@@ -189,19 +226,58 @@ export function LowStockAlerts() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Badge
-                        variant={isOutOfStock ? 'destructive' : isCritical ? 'secondary' : 'outline'}
-                        className={isCritical && !isOutOfStock ? 'bg-orange-500 text-white' : ''}
-                      >
-                        {variant.stock || 0} in stock
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => dismissAlert(variant.id)}
-                      >
-                        Dismiss
-                      </Button>
+                      {isEditing ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min="0"
+                            value={editStock}
+                            onChange={(e) => setEditStock(parseInt(e.target.value) || 0)}
+                            className="w-20 h-8"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => saveStock(variant.id)}
+                            disabled={updateStockMutation.isPending}
+                          >
+                            <Save className="h-4 w-4 text-primary" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={cancelEditing}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <Badge
+                            variant={isOutOfStock ? 'destructive' : isCritical ? 'secondary' : 'outline'}
+                            className={`cursor-pointer ${isCritical && !isOutOfStock ? 'bg-orange-500 text-white' : ''}`}
+                            onClick={() => startEditing(variant)}
+                          >
+                            {variant.stock || 0} in stock
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => startEditing(variant)}
+                          >
+                            Update
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => dismissAlert(variant.id)}
+                          >
+                            Dismiss
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
