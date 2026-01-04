@@ -185,6 +185,27 @@ export type Database = {
           },
         ]
       }
+      comparison_history: {
+        Row: {
+          compared_at: string
+          id: string
+          product_ids: string[]
+          user_id: string
+        }
+        Insert: {
+          compared_at?: string
+          id?: string
+          product_ids: string[]
+          user_id: string
+        }
+        Update: {
+          compared_at?: string
+          id?: string
+          product_ids?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
       coupons: {
         Row: {
           code: string

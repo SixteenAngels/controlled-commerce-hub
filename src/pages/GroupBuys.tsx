@@ -1,10 +1,28 @@
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { GroupBuyCard } from '@/components/products/GroupBuyCard';
-import { groupBuys } from '@/data/mockData';
-import { Users } from 'lucide-react';
+import { useGroupBuys } from '@/hooks/useGroupBuys';
+import { Users, Loader2 } from 'lucide-react';
 
 export default function GroupBuys() {
+  const { data: groupBuys, isLoading } = useGroupBuys();
+
+  const activeGroupBuys = groupBuys?.filter(gb => gb.status === 'open') || [];
+  const totalParticipants = activeGroupBuys.reduce((sum, g) => sum + (g.current_participants || 0), 0);
+  const maxDiscount = Math.max(...activeGroupBuys.map(g => g.discount_percentage || 0), 0);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container py-8 flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -27,30 +45,38 @@ export default function GroupBuys() {
         <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto mb-12">
           <div className="text-center p-4 rounded-xl bg-card border border-border">
             <p className="text-3xl font-bold text-primary">
-              {groupBuys.length}
+              {activeGroupBuys.length}
             </p>
             <p className="text-sm text-muted-foreground">Active Groups</p>
           </div>
           <div className="text-center p-4 rounded-xl bg-card border border-border">
             <p className="text-3xl font-bold text-primary">
-              {groupBuys.reduce((sum, g) => sum + g.currentParticipants, 0)}
+              {totalParticipants}
             </p>
             <p className="text-sm text-muted-foreground">Participants</p>
           </div>
           <div className="text-center p-4 rounded-xl bg-card border border-border">
             <p className="text-3xl font-bold text-primary">
-              Up to 25%
+              Up to {maxDiscount}%
             </p>
             <p className="text-sm text-muted-foreground">Savings</p>
           </div>
         </div>
 
         {/* Group Buy Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {groupBuys.map((groupBuy) => (
-            <GroupBuyCard key={groupBuy.id} groupBuy={groupBuy} />
-          ))}
-        </div>
+        {activeGroupBuys.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {activeGroupBuys.map((groupBuy) => (
+              <GroupBuyCard key={groupBuy.id} groupBuy={groupBuy} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <Users className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h2 className="text-xl font-bold mb-2">No Active Group Buys</h2>
+            <p className="text-muted-foreground">Check back later for new group buying opportunities!</p>
+          </div>
+        )}
 
         {/* Info Section */}
         <div className="mt-16 grid md:grid-cols-2 gap-8">
