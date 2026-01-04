@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
-import { Star, Users, Zap, Truck, Heart } from 'lucide-react';
+import { Star, Users, Zap, Truck, Heart, GitCompare } from 'lucide-react';
 import { Product } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompare } from '@/contexts/CompareContext';
 import { toast } from 'sonner';
 
 interface ProductCardProps {
@@ -15,7 +16,9 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const { user } = useAuth();
   const { isInWishlist, toggleWishlist } = useWishlist();
+  const { isInCompare, addToCompare, removeFromCompare, compareItems, maxItems } = useCompare();
   const inWishlist = isInWishlist(product.id);
+  const inCompare = isInCompare(product.id);
 
   const handleWishlistClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -27,6 +30,22 @@ export function ProductCard({ product }: ProductCardProps) {
     toggleWishlist(product.id);
   };
 
+  const handleCompareClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (inCompare) {
+      removeFromCompare(product.id);
+      toast.info('Removed from compare');
+    } else {
+      if (compareItems.length >= maxItems) {
+        toast.error(`Max ${maxItems} products can be compared`);
+        return;
+      }
+      addToCompare(product.id);
+      toast.success('Added to compare');
+    }
+  };
+
   return (
     <Link to={`/product/${product.id}`}>
       <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 border-border bg-card">
@@ -36,17 +55,29 @@ export function ProductCard({ product }: ProductCardProps) {
             alt={product.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
-          {/* Wishlist Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-2 right-2 bg-background/80 hover:bg-background z-10"
-            onClick={handleWishlistClick}
-          >
-            <Heart
-              className={`h-4 w-4 ${inWishlist ? 'fill-destructive text-destructive' : 'text-muted-foreground'}`}
-            />
-          </Button>
+          {/* Action Buttons */}
+          <div className="absolute top-2 right-2 flex flex-col gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="bg-background/80 hover:bg-background z-10 h-8 w-8"
+              onClick={handleWishlistClick}
+            >
+              <Heart
+                className={`h-4 w-4 ${inWishlist ? 'fill-destructive text-destructive' : 'text-muted-foreground'}`}
+              />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="bg-background/80 hover:bg-background z-10 h-8 w-8"
+              onClick={handleCompareClick}
+            >
+              <GitCompare
+                className={`h-4 w-4 ${inCompare ? 'text-primary' : 'text-muted-foreground'}`}
+              />
+            </Button>
+          </div>
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
             {product.isFlashDeal && (
