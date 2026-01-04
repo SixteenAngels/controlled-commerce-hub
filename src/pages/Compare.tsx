@@ -1,18 +1,41 @@
+import { useEffect } from 'react';
 import { useCompare } from '@/contexts/CompareContext';
-import { useProducts, ProductWithDetails } from '@/hooks/useProducts';
+import { useProducts } from '@/hooks/useProducts';
+import { useComparisonHistory } from '@/hooks/useComparisonHistory';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { X, Star, Truck, Zap, Users } from 'lucide-react';
+import { X, Star, Truck, Zap, Users, History, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import { format } from 'date-fns';
 
 export default function Compare() {
-  const { compareItems, removeFromCompare, clearCompare } = useCompare();
+  const { user } = useAuth();
+  const { compareItems, removeFromCompare, clearCompare, addToCompare } = useCompare();
   const { data: allProducts } = useProducts();
+  const { history, saveComparison, deleteHistory } = useComparisonHistory();
 
   const products = allProducts?.filter(p => compareItems.includes(p.id)) || [];
+
+  useEffect(() => {
+    if (user && compareItems.length >= 2) {
+      saveComparison(compareItems);
+    }
+  }, []);
+
+  const loadFromHistory = (productIds: string[]) => {
+    clearCompare();
+    productIds.forEach(id => addToCompare(id));
+  };
+
+  const getProductNames = (productIds: string[]) => {
+    return productIds
+      .map(id => allProducts?.find(p => p.id === id)?.name || 'Unknown')
+      .join(', ');
+  };
 
   if (compareItems.length === 0) {
     return (
@@ -26,6 +49,39 @@ export default function Compare() {
               <Button>Browse Products</Button>
             </Link>
           </div>
+
+          {user && history.length > 0 && (
+            <div className="mt-12 max-w-2xl mx-auto">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <History className="h-5 w-5" />
+                Previous Comparisons
+              </h2>
+              <div className="space-y-3">
+                {history.map(entry => (
+                  <Card key={entry.id} className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(entry.compared_at), 'MMM d, yyyy h:mm a')}
+                        </p>
+                        <p className="text-sm line-clamp-1">
+                          {getProductNames(entry.product_ids)}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => loadFromHistory(entry.product_ids)}>
+                          Load
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => deleteHistory(entry.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
         </main>
         <Footer />
       </div>
@@ -49,22 +105,11 @@ export default function Compare() {
                 {products.map(product => (
                   <th key={product.id} className="p-4 border-b bg-muted/50 min-w-[250px]">
                     <div className="relative">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute -top-2 -right-2"
-                        onClick={() => removeFromCompare(product.id)}
-                      >
+                      <Button variant="ghost" size="icon" className="absolute -top-2 -right-2" onClick={() => removeFromCompare(product.id)}>
                         <X className="h-4 w-4" />
                       </Button>
-                      <img
-                        src={product.images?.[0] || '/placeholder.svg'}
-                        alt={product.name}
-                        className="w-32 h-32 object-cover mx-auto rounded-lg mb-2"
-                      />
-                      <Link to={`/product/${product.id}`} className="font-medium hover:text-primary">
-                        {product.name}
-                      </Link>
+                      <img src={product.images?.[0] || '/placeholder.svg'} alt={product.name} className="w-32 h-32 object-cover mx-auto rounded-lg mb-2" />
+                      <Link to={`/product/${product.id}`} className="font-medium hover:text-primary">{product.name}</Link>
                     </div>
                   </th>
                 ))}
@@ -75,9 +120,7 @@ export default function Compare() {
                 <td className="p-4 border-b font-medium">Price</td>
                 {products.map(product => (
                   <td key={product.id} className="p-4 border-b text-center">
-                    <span className="text-xl font-bold text-primary">
-                      ₦{product.base_price.toLocaleString()}
-                    </span>
+                    <span className="text-xl font-bold text-primary">₦{product.base_price.toLocaleString()}</span>
                   </td>
                 ))}
               </tr>
@@ -96,9 +139,7 @@ export default function Compare() {
               <tr>
                 <td className="p-4 border-b font-medium">Category</td>
                 {products.map(product => (
-                  <td key={product.id} className="p-4 border-b text-center">
-                    {product.category_id || 'N/A'}
-                  </td>
+                  <td key={product.id} className="p-4 border-b text-center">{product.category_name || 'N/A'}</td>
                 ))}
               </tr>
               <tr>
@@ -115,51 +156,14 @@ export default function Compare() {
                 })}
               </tr>
               <tr>
-                <td className="p-4 border-b font-medium">Variants</td>
-                {products.map(product => (
-                  <td key={product.id} className="p-4 border-b text-center">
-                    <div className="flex flex-wrap gap-1 justify-center">
-                      {product.variants?.slice(0, 3).map(v => (
-                        <Badge key={v.id} variant="outline">
-                          {v.size || v.color || 'Default'}
-                        </Badge>
-                      ))}
-                      {(product.variants?.length || 0) > 3 && (
-                        <Badge variant="outline">+{(product.variants?.length || 0) - 3}</Badge>
-                      )}
-                    </div>
-                  </td>
-                ))}
-              </tr>
-              <tr>
                 <td className="p-4 border-b font-medium">Features</td>
                 {products.map(product => (
                   <td key={product.id} className="p-4 border-b text-center">
                     <div className="flex flex-wrap gap-2 justify-center">
-                      {product.is_free_shipping && (
-                        <Badge variant="secondary" className="gap-1">
-                          <Truck className="h-3 w-3" /> Free Shipping
-                        </Badge>
-                      )}
-                      {product.is_flash_deal && (
-                        <Badge variant="secondary" className="gap-1 bg-orange-500 text-white">
-                          <Zap className="h-3 w-3" /> Flash Deal
-                        </Badge>
-                      )}
-                      {product.is_group_buy_eligible && (
-                        <Badge variant="secondary" className="gap-1">
-                          <Users className="h-3 w-3" /> Group Buy
-                        </Badge>
-                      )}
+                      {product.is_free_shipping && <Badge variant="secondary" className="gap-1"><Truck className="h-3 w-3" /> Free Shipping</Badge>}
+                      {product.is_flash_deal && <Badge variant="secondary" className="gap-1 bg-orange-500 text-white"><Zap className="h-3 w-3" /> Flash Deal</Badge>}
+                      {product.is_group_buy_eligible && <Badge variant="secondary" className="gap-1"><Users className="h-3 w-3" /> Group Buy</Badge>}
                     </div>
-                  </td>
-                ))}
-              </tr>
-              <tr>
-                <td className="p-4 border-b font-medium">Description</td>
-                {products.map(product => (
-                  <td key={product.id} className="p-4 border-b text-center text-sm text-muted-foreground">
-                    {product.description?.substring(0, 150) || 'No description'}...
                   </td>
                 ))}
               </tr>
@@ -167,9 +171,7 @@ export default function Compare() {
                 <td className="p-4 font-medium">Action</td>
                 {products.map(product => (
                   <td key={product.id} className="p-4 text-center">
-                    <Link to={`/product/${product.id}`}>
-                      <Button>View Details</Button>
-                    </Link>
+                    <Link to={`/product/${product.id}`}><Button>View Details</Button></Link>
                   </td>
                 ))}
               </tr>

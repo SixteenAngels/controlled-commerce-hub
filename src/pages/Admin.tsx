@@ -16,10 +16,9 @@ import { AdminSupport } from '@/components/admin/AdminSupport';
 import { AdminReceipts } from '@/components/admin/AdminReceipts';
 import { AdminNotifications } from '@/components/admin/AdminNotifications';
 import { AdminSettings } from '@/components/admin/AdminSettings';
-import { LowStockAlerts } from '@/components/admin/LowStockAlerts';
+import { StockManagement } from '@/components/admin/StockManagement';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
 export default function Admin() {
   const { user, isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -143,7 +142,7 @@ export default function Admin() {
         <Routes>
           <Route path="/" element={<AdminDashboard />} />
           <Route path="/products" element={<AdminProducts />} />
-          <Route path="/stock" element={<LowStockAlerts />} />
+          <Route path="/stock" element={<StockManagement />} />
           <Route path="/orders" element={<AdminOrders />} />
           <Route path="/shipping" element={<AdminShipping />} />
           <Route path="/group-buys" element={<AdminGroupBuys />} />
