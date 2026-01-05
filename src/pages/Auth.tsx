@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Loader2, Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import { Loader2, Mail, Lock, User, ArrowLeft, RefreshCw } from 'lucide-react';
 import { z } from 'zod';
 
 const emailSchema = z.string().email('Please enter a valid email address');
@@ -19,10 +20,11 @@ const nameSchema = z.string().min(2, 'Name must be at least 2 characters');
 export default function Auth() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, isLoading: authLoading, signIn, signUp, signInWithGoogle, resetPassword, updatePassword } = useAuth();
+  const { user, isLoading: authLoading, signIn, signUp, signInWithGoogle, resetPassword, updatePassword, resendVerificationEmail } = useAuth();
   
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
@@ -33,6 +35,9 @@ export default function Auth() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showVerificationSent, setShowVerificationSent] = useState(false);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Check if user is coming from password reset link
@@ -110,12 +115,16 @@ export default function Auth() {
     if (!validateLogin()) return;
     
     setIsLoading(true);
-    const { error } = await signIn(loginEmail, loginPassword);
+    const { error } = await signIn(loginEmail, loginPassword, rememberMe);
     setIsLoading(false);
     
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
         toast.error('Invalid email or password. Please try again.');
+      } else if (error.message.includes('Email not confirmed')) {
+        setPendingVerificationEmail(loginEmail);
+        setShowVerificationSent(true);
+        toast.error('Please verify your email before signing in.');
       } else {
         toast.error(error.message);
       }
@@ -141,8 +150,24 @@ export default function Auth() {
         toast.error(error.message);
       }
     } else {
-      toast.success('Account created successfully! Welcome to Ihsan.');
-      navigate('/');
+      // Check if email confirmation is required
+      setPendingVerificationEmail(signupEmail);
+      setShowVerificationSent(true);
+      toast.success('Account created! Please check your email to verify your account.');
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!pendingVerificationEmail) return;
+    
+    setIsResending(true);
+    const { error } = await resendVerificationEmail(pendingVerificationEmail);
+    setIsResending(false);
+    
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Verification email sent! Please check your inbox.');
     }
   };
 
@@ -285,6 +310,69 @@ export default function Auth() {
     );
   }
 
+  // Show email verification sent screen
+  if (showVerificationSent) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container py-16">
+          <div className="max-w-md mx-auto">
+            <Card className="border-border">
+              <CardHeader className="text-center">
+                <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Mail className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle className="text-2xl font-serif">Check Your Email</CardTitle>
+                <CardDescription>
+                  We've sent a verification link to <strong>{pendingVerificationEmail}</strong>
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground text-center">
+                  Click the link in your email to verify your account. If you don't see it, check your spam folder.
+                </p>
+                
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={handleResendVerification}
+                  disabled={isResending}
+                >
+                  {isResending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Resend Verification Email
+                    </>
+                  )}
+                </Button>
+                
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  className="w-full" 
+                  onClick={() => {
+                    setShowVerificationSent(false);
+                    setPendingVerificationEmail('');
+                  }}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Sign In
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   // Show forgot password form
   if (showForgotPassword) {
     return (
@@ -403,6 +491,27 @@ export default function Auth() {
                       )}
                     </div>
                     
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="remember-me" 
+                          checked={rememberMe}
+                          onCheckedChange={(checked) => setRememberMe(checked === true)}
+                        />
+                        <Label htmlFor="remember-me" className="text-sm font-normal cursor-pointer">
+                          Remember me
+                        </Label>
+                      </div>
+                      <Button 
+                        type="button" 
+                        variant="link" 
+                        className="text-sm p-0 h-auto" 
+                        onClick={() => setShowForgotPassword(true)}
+                      >
+                        Forgot password?
+                      </Button>
+                    </div>
+                    
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading ? (
                         <>
@@ -412,15 +521,6 @@ export default function Auth() {
                       ) : (
                         'Sign In'
                       )}
-                    </Button>
-                    
-                    <Button 
-                      type="button" 
-                      variant="link" 
-                      className="w-full text-sm" 
-                      onClick={() => setShowForgotPassword(true)}
-                    >
-                      Forgot your password?
                     </Button>
                     
                     <div className="relative my-4">

@@ -8,10 +8,11 @@ interface AuthContextType {
   isLoading: boolean;
   isAdmin: boolean;
   signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
+  resendVerificationEmail: (email: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -87,11 +88,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
+    // If rememberMe is false, we'll rely on session storage behavior
+    // Supabase persists session by default, but we can clear on browser close if needed
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+
+    if (!error && !rememberMe) {
+      // Store a flag to indicate session should not persist beyond browser session
+      sessionStorage.setItem('ihsan_temp_session', 'true');
+    } else if (!error && rememberMe) {
+      sessionStorage.removeItem('ihsan_temp_session');
+    }
 
     return { error: error as Error | null };
   };
@@ -123,8 +133,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
+  const resendVerificationEmail = async (email: string) => {
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: redirectUrl,
+      },
+    });
+
+    return { error: error as Error | null };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
+    sessionStorage.removeItem('ihsan_temp_session');
     setUser(null);
     setSession(null);
     setIsAdmin(false);
@@ -142,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithGoogle,
         resetPassword,
         updatePassword,
+        resendVerificationEmail,
         signOut,
       }}
     >
