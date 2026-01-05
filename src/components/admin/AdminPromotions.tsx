@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { Loader2, Plus, Trash2, Tag, Zap, Percent, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
+import { couponSchema, validateForm } from '@/lib/validations/admin';
 
 export function AdminPromotions() {
   const queryClient = useQueryClient();
@@ -49,6 +50,16 @@ export function AdminPromotions() {
       return data;
     },
   });
+
+  const handleAddCoupon = () => {
+    const validation = validateForm(couponSchema, newCoupon);
+    if (!validation.success) {
+      const firstError = Object.values(validation.errors || {})[0];
+      toast.error(firstError || 'Please fix the form errors');
+      return;
+    }
+    addCouponMutation.mutate(newCoupon);
+  };
 
   const addCouponMutation = useMutation({
     mutationFn: async (couponData: any) => {
@@ -205,7 +216,7 @@ export function AdminPromotions() {
                   />
                 </div>
                 <Button
-                  onClick={() => addCouponMutation.mutate(newCoupon)}
+                  onClick={handleAddCoupon}
                   disabled={!newCoupon.code || !newCoupon.value}
                 >
                   Create Coupon

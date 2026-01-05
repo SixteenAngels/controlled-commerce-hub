@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Loader2, Package } from 'lucide-react';
 import { useCategories } from '@/hooks/useCategories';
 import { ProductImageUpload, uploadProductImages } from './ProductImageUpload';
+import { productSchema, validateForm } from '@/lib/validations/admin';
 
 interface ProductForm {
   name: string;
@@ -201,6 +202,14 @@ export function AdminProducts() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const validation = validateForm(productSchema, form);
+    if (!validation.success) {
+      const firstError = Object.values(validation.errors || {})[0];
+      toast.error(firstError || 'Please fix the form errors');
+      return;
+    }
+    
     if (editingId) {
       updateMutation.mutate({ id: editingId, data: form });
     } else {
