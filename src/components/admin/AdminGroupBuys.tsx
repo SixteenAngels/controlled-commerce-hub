@@ -31,6 +31,7 @@ import {
 import { toast } from 'sonner';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
+import { groupBuySchema, validateForm } from '@/lib/validations/admin';
 
 interface GroupBuyForm {
   product_id: string;
@@ -107,6 +108,14 @@ export function AdminGroupBuys() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const validation = validateForm(groupBuySchema, form);
+    if (!validation.success) {
+      const firstError = Object.values(validation.errors || {})[0];
+      toast.error(firstError || 'Please fix the form errors');
+      return;
+    }
+    
     createMutation.mutate(form);
   };
 

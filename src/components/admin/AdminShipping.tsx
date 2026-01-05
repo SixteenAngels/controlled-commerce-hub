@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Loader2, Plus, Pencil, Trash2, Ship, Plane, Package } from 'lucide-react';
+import { shippingClassSchema, shippingTypeSchema, validateForm } from '@/lib/validations/admin';
 
 export function AdminShipping() {
   const queryClient = useQueryClient();
@@ -52,6 +53,16 @@ export function AdminShipping() {
     },
   });
 
+  const handleAddType = () => {
+    const validation = validateForm(shippingTypeSchema, newType);
+    if (!validation.success) {
+      const firstError = Object.values(validation.errors || {})[0];
+      toast.error(firstError || 'Please fix the form errors');
+      return;
+    }
+    addTypeMutation.mutate(newType);
+  };
+
   const addTypeMutation = useMutation({
     mutationFn: async (typeData: { name: string; description: string }) => {
       const { error } = await supabase.from('shipping_types').insert(typeData);
@@ -65,6 +76,33 @@ export function AdminShipping() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  const handleAddClass = () => {
+    const validation = validateForm(shippingClassSchema, newClass);
+    if (!validation.success) {
+      const firstError = Object.values(validation.errors || {})[0];
+      toast.error(firstError || 'Please fix the form errors');
+      return;
+    }
+    addClassMutation.mutate(newClass);
+  };
+
+  const handleUpdateClass = () => {
+    if (!editingClass) return;
+    const validation = validateForm(shippingClassSchema, {
+      name: editingClass.name,
+      shipping_type_id: editingClass.shipping_type_id,
+      base_price: String(editingClass.base_price),
+      estimated_days_min: String(editingClass.estimated_days_min),
+      estimated_days_max: String(editingClass.estimated_days_max),
+    });
+    if (!validation.success) {
+      const firstError = Object.values(validation.errors || {})[0];
+      toast.error(firstError || 'Please fix the form errors');
+      return;
+    }
+    updateClassMutation.mutate(editingClass);
+  };
 
   const addClassMutation = useMutation({
     mutationFn: async (classData: any) => {
@@ -187,7 +225,7 @@ export function AdminShipping() {
                   />
                 </div>
                 <Button
-                  onClick={() => addTypeMutation.mutate(newType)}
+                  onClick={handleAddType}
                   disabled={!newType.name}
                 >
                   Add Type
@@ -286,7 +324,7 @@ export function AdminShipping() {
                   </div>
                 </div>
                 <Button
-                  onClick={() => addClassMutation.mutate(newClass)}
+                  onClick={handleAddClass}
                   disabled={!newClass.name || !newClass.shipping_type_id || !newClass.base_price}
                 >
                   Add Class
@@ -361,7 +399,7 @@ export function AdminShipping() {
                               />
                             </div>
                           </div>
-                          <Button onClick={() => updateClassMutation.mutate(editingClass)}>
+                          <Button onClick={handleUpdateClass}>
                             Save Changes
                           </Button>
                         </div>
