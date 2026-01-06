@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Loader2, Shield, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react';
+import { Loader2, Shield, ShieldCheck, ShieldOff, Trash2, Key } from 'lucide-react';
 import { TwoFactorSetup } from './TwoFactorSetup';
+import { BackupRecoveryCodes } from './BackupRecoveryCodes';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +31,8 @@ export function TwoFactorManage() {
   const [isLoading, setIsLoading] = useState(true);
   const [factors, setFactors] = useState<Factor[]>([]);
   const [showSetup, setShowSetup] = useState(false);
+  const [showBackupCodes, setShowBackupCodes] = useState(false);
+  const [unusedCodesCount, setUnusedCodesCount] = useState(0);
 
   const loadFactors = async () => {
     setIsLoading(true);
@@ -40,6 +43,17 @@ export function TwoFactorManage() {
       
       const allFactors = [...(data?.totp || [])];
       setFactors(allFactors);
+
+      // Load backup codes count
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { count } = await supabase
+          .from('backup_recovery_codes')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('is_used', false);
+        setUnusedCodesCount(count || 0);
+      }
     } catch (error: any) {
       console.error('Error loading factors:', error);
     } finally {
@@ -86,6 +100,20 @@ export function TwoFactorManage() {
     );
   }
 
+  if (showBackupCodes) {
+    return (
+      <div className="space-y-4">
+        <BackupRecoveryCodes onComplete={() => {
+          setShowBackupCodes(false);
+          loadFactors();
+        }} />
+        <Button variant="outline" className="w-full" onClick={() => setShowBackupCodes(false)}>
+          Back to Security Settings
+        </Button>
+      </div>
+    );
+  }
+
   const verifiedFactors = factors.filter(f => f.status === 'verified');
   const hasActive2FA = verifiedFactors.length > 0;
 
@@ -110,7 +138,7 @@ export function TwoFactorManage() {
       </CardHeader>
       <CardContent className="space-y-4">
         {verifiedFactors.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {verifiedFactors.map((factor) => (
               <div 
                 key={factor.id} 
@@ -158,6 +186,30 @@ export function TwoFactorManage() {
                 </div>
               </div>
             ))}
+
+            {/* Backup Codes Section */}
+            <div 
+              className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/50"
+            >
+              <div className="flex items-center gap-3">
+                <Key className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="font-medium text-sm">Backup Recovery Codes</p>
+                  <p className="text-xs text-muted-foreground">
+                    {unusedCodesCount > 0 
+                      ? `${unusedCodesCount} codes remaining`
+                      : 'No codes generated'}
+                  </p>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowBackupCodes(true)}
+              >
+                {unusedCodesCount > 0 ? 'Manage' : 'Generate'}
+              </Button>
+            </div>
           </div>
         ) : (
           <Button onClick={() => setShowSetup(true)} className="w-full">
