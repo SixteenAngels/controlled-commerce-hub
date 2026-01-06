@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { TwoFactorManage } from '@/components/auth/TwoFactorManage';
 
 interface Profile {
   name: string | null;
@@ -281,6 +282,11 @@ export default function Profile() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Two-Factor Authentication */}
+        <div className="mb-8">
+          <TwoFactorManage />
+        </div>
 
         {/* Addresses */}
         <Card>
