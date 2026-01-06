@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { toast } from 'sonner';
 import { Loader2, Shield, Copy, Check } from 'lucide-react';
+import { BackupRecoveryCodes } from './BackupRecoveryCodes';
 
 interface TwoFactorSetupProps {
   onComplete: () => void;
@@ -12,13 +13,14 @@ interface TwoFactorSetupProps {
 }
 
 export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
-  const [step, setStep] = useState<'initial' | 'verify'>('initial');
+  const [step, setStep] = useState<'initial' | 'verify' | 'backup-codes'>('initial');
   const [isLoading, setIsLoading] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const [factorId, setFactorId] = useState<string | null>(null);
   const [verifyCode, setVerifyCode] = useState('');
   const [copied, setCopied] = useState(false);
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
 
   const handleEnroll = async () => {
     setIsLoading(true);
@@ -43,6 +45,37 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
     }
   };
 
+  const generateBackupCodes = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    // Generate 10 random recovery codes
+    const newCodes: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const code = Array.from(crypto.getRandomValues(new Uint8Array(4)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+        .toUpperCase();
+      newCodes.push(`${code.slice(0, 4)}-${code.slice(4)}`);
+    }
+
+    // Delete existing codes
+    await supabase
+      .from('backup_recovery_codes')
+      .delete()
+      .eq('user_id', user.id);
+
+    // Store hashed codes in database
+    const codesToInsert = newCodes.map(code => ({
+      user_id: user.id,
+      code_hash: btoa(code),
+    }));
+
+    await supabase.from('backup_recovery_codes').insert(codesToInsert);
+
+    return newCodes;
+  };
+
   const handleVerify = async () => {
     if (verifyCode.length !== 6 || !factorId) return;
 
@@ -62,8 +95,12 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
 
       if (verifyError) throw verifyError;
 
-      toast.success('Two-factor authentication enabled successfully!');
-      onComplete();
+      // Generate backup codes after successful 2FA setup
+      const codes = await generateBackupCodes();
+      setBackupCodes(codes);
+      setStep('backup-codes');
+      
+      toast.success('Two-factor authentication enabled!');
     } catch (error: any) {
       toast.error(error.message || 'Invalid verification code');
       setVerifyCode('');
@@ -80,6 +117,16 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
       toast.success('Secret copied to clipboard');
     }
   };
+
+  if (step === 'backup-codes') {
+    return (
+      <BackupRecoveryCodes 
+        codes={backupCodes} 
+        onComplete={onComplete} 
+        showAsSetup={true} 
+      />
+    );
+  }
 
   if (step === 'initial') {
     return (
