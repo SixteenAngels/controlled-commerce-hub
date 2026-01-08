@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Key, Mail, Map, Shield, Bell, Database } from 'lucide-react';
+import { Settings, Key, Mail, Map, Shield, Database, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
+import { AdminCurrencySettings } from './AdminCurrencySettings';
 
 export function AdminSettings() {
   const [settings, setSettings] = useState({
@@ -44,10 +45,14 @@ export function AdminSettings() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6">
           <TabsTrigger value="general" className="gap-2">
             <Settings className="h-4 w-4" />
             General
+          </TabsTrigger>
+          <TabsTrigger value="currency" className="gap-2">
+            <DollarSign className="h-4 w-4" />
+            Currency
           </TabsTrigger>
           <TabsTrigger value="email" className="gap-2">
             <Mail className="h-4 w-4" />
@@ -66,6 +71,11 @@ export function AdminSettings() {
             API Keys
           </TabsTrigger>
         </TabsList>
+
+        {/* Currency Settings */}
+        <TabsContent value="currency">
+          <AdminCurrencySettings />
+        </TabsContent>
 
         {/* General Settings */}
         <TabsContent value="general">

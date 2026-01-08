@@ -18,6 +18,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { TwoFactorManage } from '@/components/auth/TwoFactorManage';
+import { SessionManagement } from '@/components/auth/SessionManagement';
 
 interface Profile {
   name: string | null;
@@ -286,6 +287,11 @@ export default function Profile() {
         {/* Two-Factor Authentication */}
         <div className="mb-8">
           <TwoFactorManage />
+        </div>
+
+        {/* Session Management */}
+        <div className="mb-8">
+          <SessionManagement />
         </div>
 
         {/* Addresses */}
