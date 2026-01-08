@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Loader2, Package } from 'lucide-react';
 import { useCategories } from '@/hooks/useCategories';
 import { ProductImageUpload, uploadProductImages } from './ProductImageUpload';
+import { ProductVariantsManager, VariantData } from './ProductVariantsManager';
 import { productSchema, validateForm } from '@/lib/validations/admin';
 
 interface ProductForm {
@@ -66,8 +67,9 @@ export function AdminProducts() {
   const [form, setForm] = useState<ProductForm>(defaultForm);
   const [pendingImages, setPendingImages] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<{ id: string; image_url: string; order_index: number }[]>([]);
+  const [variants, setVariants] = useState<VariantData[]>([]);
 
-  const { data: categories } = useCategories();
+  const { data: categories, isLoading: categoriesLoading } = useCategories();
 
   const { data: products, isLoading } = useQuery({
     queryKey: ['admin-products'],
@@ -106,6 +108,19 @@ export function AdminProducts() {
         }));
         await supabase.from('product_images').insert(imageRecords);
       }
+
+      // Create variants if any
+      if (variants.length > 0 && product) {
+        const variantRecords = variants.map((v) => ({
+          product_id: product.id,
+          size: v.size || null,
+          color: v.color || null,
+          price_override: v.price_override ? parseFloat(v.price_override) : null,
+          stock: parseInt(v.stock) || 0,
+          sku: v.sku || null,
+        }));
+        await supabase.from('product_variants').insert(variantRecords);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
@@ -114,6 +129,7 @@ export function AdminProducts() {
       setIsOpen(false);
       setForm(defaultForm);
       setPendingImages([]);
+      setVariants([]);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -151,6 +167,20 @@ export function AdminProducts() {
         }));
         await supabase.from('product_images').insert(imageRecords);
       }
+
+      // Handle variants: delete existing and insert new
+      await supabase.from('product_variants').delete().eq('product_id', id);
+      if (variants.length > 0) {
+        const variantRecords = variants.map((v) => ({
+          product_id: id,
+          size: v.size || null,
+          color: v.color || null,
+          price_override: v.price_override ? parseFloat(v.price_override) : null,
+          stock: parseInt(v.stock) || 0,
+          sku: v.sku || null,
+        }));
+        await supabase.from('product_variants').insert(variantRecords);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
@@ -161,6 +191,7 @@ export function AdminProducts() {
       setForm(defaultForm);
       setPendingImages([]);
       setExistingImages([]);
+      setVariants([]);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -182,7 +213,7 @@ export function AdminProducts() {
     },
   });
 
-  const handleEdit = (product: typeof products extends (infer T)[] ? T : never) => {
+  const handleEdit = async (product: typeof products extends (infer T)[] ? T : never) => {
     setEditingId(product.id);
     setForm({
       name: product.name,
@@ -197,6 +228,23 @@ export function AdminProducts() {
     });
     setExistingImages((product as any).product_images || []);
     setPendingImages([]);
+    
+    // Load existing variants
+    const { data: existingVariants } = await supabase
+      .from('product_variants')
+      .select('*')
+      .eq('product_id', product.id);
+    
+    if (existingVariants) {
+      setVariants(existingVariants.map(v => ({
+        id: v.id,
+        size: v.size || '',
+        color: v.color || '',
+        price_override: v.price_override ? String(v.price_override) : '',
+        stock: String(v.stock || 0),
+        sku: v.sku || '',
+      })));
+    }
     setIsOpen(true);
   };
 
@@ -223,6 +271,7 @@ export function AdminProducts() {
     setForm(defaultForm);
     setPendingImages([]);
     setExistingImages([]);
+    setVariants([]);
   };
 
   return (
@@ -295,12 +344,18 @@ export function AdminProducts() {
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {categories?.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
+                    <SelectContent className="z-50 bg-popover">
+                      {categoriesLoading ? (
+                        <SelectItem value="" disabled>Loading...</SelectItem>
+                      ) : categories && categories.length > 0 ? (
+                        categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>No categories available</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -359,6 +414,15 @@ export function AdminProducts() {
                   existingImages={existingImages}
                   pendingImages={pendingImages}
                   onImagesChange={setPendingImages}
+                />
+              </div>
+
+              {/* Variants Section */}
+              <div className="border-t border-border pt-4">
+                <ProductVariantsManager
+                  variants={variants}
+                  onVariantsChange={setVariants}
+                  basePrice={form.base_price}
                 />
               </div>
 
