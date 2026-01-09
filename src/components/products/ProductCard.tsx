@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Star, Users, Zap, Truck, Heart, GitCompare } from 'lucide-react';
+import { Star, Users, Zap, Truck, Heart, GitCompare, Clock } from 'lucide-react';
 import { Product } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,14 +7,20 @@ import { Button } from '@/components/ui/button';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompare } from '@/contexts/CompareContext';
+import { useCurrency } from '@/hooks/useCurrency';
 import { toast } from 'sonner';
 
+interface ExtendedProduct extends Product {
+  isReadyNow?: boolean;
+}
+
 interface ProductCardProps {
-  product: Product;
+  product: ExtendedProduct;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
   const { user } = useAuth();
+  const { formatPrice } = useCurrency();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { isInCompare, addToCompare, removeFromCompare, compareItems, maxItems } = useCompare();
   const inWishlist = isInWishlist(product.id);
@@ -80,6 +86,12 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
+            {product.isReadyNow && (
+              <Badge className="bg-primary text-primary-foreground">
+                <Clock className="h-3 w-3 mr-1" />
+                Ready Now
+              </Badge>
+            )}
             {product.isFlashDeal && (
               <Badge className="bg-destructive text-destructive-foreground">
                 <Zap className="h-3 w-3 mr-1" />
@@ -93,7 +105,7 @@ export function ProductCard({ product }: ProductCardProps) {
               </Badge>
             )}
             {product.isFreeShippingEligible && (
-              <Badge className="bg-primary text-primary-foreground">
+              <Badge className="bg-secondary text-secondary-foreground">
                 <Truck className="h-3 w-3 mr-1" />
                 Free Ship
               </Badge>
@@ -107,7 +119,7 @@ export function ProductCard({ product }: ProductCardProps) {
           </h3>
           <div className="flex items-center justify-between">
             <p className="text-lg font-bold text-primary">
-              ${product.basePrice.toFixed(2)}
+              {formatPrice(product.basePrice)}
             </p>
             <div className="flex items-center gap-1">
               <Star className="h-4 w-4 fill-accent-foreground text-accent-foreground" />

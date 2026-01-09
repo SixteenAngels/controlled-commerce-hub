@@ -689,6 +689,7 @@ export type Database = {
           is_flash_deal: boolean | null
           is_free_shipping: boolean | null
           is_group_buy_eligible: boolean | null
+          is_ready_now: boolean | null
           item_code: string
           name: string
           product_number: string | null
@@ -706,6 +707,7 @@ export type Database = {
           is_flash_deal?: boolean | null
           is_free_shipping?: boolean | null
           is_group_buy_eligible?: boolean | null
+          is_ready_now?: boolean | null
           item_code: string
           name: string
           product_number?: string | null
@@ -723,6 +725,7 @@ export type Database = {
           is_flash_deal?: boolean | null
           is_free_shipping?: boolean | null
           is_group_buy_eligible?: boolean | null
+          is_ready_now?: boolean | null
           item_code?: string
           name?: string
           product_number?: string | null

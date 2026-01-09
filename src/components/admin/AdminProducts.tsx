@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -34,7 +34,9 @@ import { Plus, Pencil, Trash2, Loader2, Package } from 'lucide-react';
 import { useCategories } from '@/hooks/useCategories';
 import { ProductImageUpload, uploadProductImages } from './ProductImageUpload';
 import { ProductVariantsManager, VariantData } from './ProductVariantsManager';
+import { ProductShippingRules, ShippingRuleData } from './ProductShippingRules';
 import { productSchema, validateForm } from '@/lib/validations/admin';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface ProductForm {
   name: string;
@@ -45,6 +47,7 @@ interface ProductForm {
   is_group_buy_eligible: boolean;
   is_flash_deal: boolean;
   is_free_shipping: boolean;
+  is_ready_now: boolean;
   is_active: boolean;
 }
 
@@ -57,17 +60,20 @@ const defaultForm: ProductForm = {
   is_group_buy_eligible: false,
   is_flash_deal: false,
   is_free_shipping: false,
+  is_ready_now: false,
   is_active: true,
 };
 
 export function AdminProducts() {
   const queryClient = useQueryClient();
+  const { formatPrice } = useCurrency();
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProductForm>(defaultForm);
   const [pendingImages, setPendingImages] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<{ id: string; image_url: string; order_index: number }[]>([]);
   const [variants, setVariants] = useState<VariantData[]>([]);
+  const [shippingRules, setShippingRules] = useState<ShippingRuleData[]>([]);
 
   const { data: categories, isLoading: categoriesLoading } = useCategories();
 
@@ -94,6 +100,7 @@ export function AdminProducts() {
         is_group_buy_eligible: data.is_group_buy_eligible,
         is_flash_deal: data.is_flash_deal,
         is_free_shipping: data.is_free_shipping,
+        is_ready_now: data.is_ready_now,
         is_active: data.is_active,
       }).select().single();
       if (error) throw error;
@@ -121,15 +128,23 @@ export function AdminProducts() {
         }));
         await supabase.from('product_variants').insert(variantRecords);
       }
+
+      // Create shipping rules if any
+      if (shippingRules.length > 0 && product) {
+        const ruleRecords = shippingRules.map((r) => ({
+          product_id: product.id,
+          shipping_class_id: r.shipping_class_id,
+          price: parseFloat(r.price) || 0,
+          is_allowed: r.is_allowed,
+        }));
+        await supabase.from('product_shipping_rules').insert(ruleRecords);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success('Product created successfully');
-      setIsOpen(false);
-      setForm(defaultForm);
-      setPendingImages([]);
-      setVariants([]);
+      handleClose();
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -149,6 +164,7 @@ export function AdminProducts() {
           is_group_buy_eligible: data.is_group_buy_eligible,
           is_flash_deal: data.is_flash_deal,
           is_free_shipping: data.is_free_shipping,
+          is_ready_now: data.is_ready_now,
           is_active: data.is_active,
         })
         .eq('id', id);
@@ -181,17 +197,24 @@ export function AdminProducts() {
         }));
         await supabase.from('product_variants').insert(variantRecords);
       }
+
+      // Handle shipping rules: delete existing and insert new
+      await supabase.from('product_shipping_rules').delete().eq('product_id', id);
+      if (shippingRules.length > 0) {
+        const ruleRecords = shippingRules.map((r) => ({
+          product_id: id,
+          shipping_class_id: r.shipping_class_id,
+          price: parseFloat(r.price) || 0,
+          is_allowed: r.is_allowed,
+        }));
+        await supabase.from('product_shipping_rules').insert(ruleRecords);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success('Product updated successfully');
-      setIsOpen(false);
-      setEditingId(null);
-      setForm(defaultForm);
-      setPendingImages([]);
-      setExistingImages([]);
-      setVariants([]);
+      handleClose();
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -213,38 +236,73 @@ export function AdminProducts() {
     },
   });
 
-  const handleEdit = async (product: typeof products extends (infer T)[] ? T : never) => {
-    setEditingId(product.id);
-    setForm({
-      name: product.name,
-      description: product.description || '',
-      item_code: product.item_code,
-      base_price: String(product.base_price),
-      category_id: product.category_id || '',
-      is_group_buy_eligible: product.is_group_buy_eligible || false,
-      is_flash_deal: product.is_flash_deal || false,
-      is_free_shipping: product.is_free_shipping || false,
-      is_active: product.is_active ?? true,
-    });
-    setExistingImages((product as any).product_images || []);
-    setPendingImages([]);
-    
-    // Load existing variants
-    const { data: existingVariants } = await supabase
-      .from('product_variants')
-      .select('*')
-      .eq('product_id', product.id);
-    
-    if (existingVariants) {
-      setVariants(existingVariants.map(v => ({
-        id: v.id,
-        size: v.size || '',
-        color: v.color || '',
-        price_override: v.price_override ? String(v.price_override) : '',
-        stock: String(v.stock || 0),
-        sku: v.sku || '',
-      })));
+  const handleEdit = async (product: any) => {
+    try {
+      setEditingId(product.id);
+      setForm({
+        name: product.name || '',
+        description: product.description || '',
+        item_code: product.item_code || '',
+        base_price: String(product.base_price || 0),
+        category_id: product.category_id || '',
+        is_group_buy_eligible: product.is_group_buy_eligible || false,
+        is_flash_deal: product.is_flash_deal || false,
+        is_free_shipping: product.is_free_shipping || false,
+        is_ready_now: product.is_ready_now || false,
+        is_active: product.is_active ?? true,
+      });
+      setExistingImages(product.product_images || []);
+      setPendingImages([]);
+      
+      // Load existing variants
+      const { data: existingVariants } = await supabase
+        .from('product_variants')
+        .select('*')
+        .eq('product_id', product.id);
+      
+      if (existingVariants) {
+        setVariants(existingVariants.map(v => ({
+          id: v.id,
+          size: v.size || '',
+          color: v.color || '',
+          price_override: v.price_override ? String(v.price_override) : '',
+          stock: String(v.stock || 0),
+          sku: v.sku || '',
+        })));
+      } else {
+        setVariants([]);
+      }
+
+      // Load existing shipping rules
+      const { data: existingRules } = await supabase
+        .from('product_shipping_rules')
+        .select('*')
+        .eq('product_id', product.id);
+
+      if (existingRules) {
+        setShippingRules(existingRules.map(r => ({
+          shipping_class_id: r.shipping_class_id,
+          price: String(r.price || 0),
+          is_allowed: r.is_allowed ?? true,
+        })));
+      } else {
+        setShippingRules([]);
+      }
+
+      setIsOpen(true);
+    } catch (error) {
+      console.error('Error loading product:', error);
+      toast.error('Error loading product details');
     }
+  };
+
+  const handleOpenAdd = () => {
+    setEditingId(null);
+    setForm(defaultForm);
+    setPendingImages([]);
+    setExistingImages([]);
+    setVariants([]);
+    setShippingRules([]);
     setIsOpen(true);
   };
 
@@ -272,20 +330,21 @@ export function AdminProducts() {
     setPendingImages([]);
     setExistingImages([]);
     setVariants([]);
+    setShippingRules([]);
   };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold font-serif text-foreground">Products</h1>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
           <DialogTrigger asChild>
-            <Button onClick={() => { setEditingId(null); setForm(defaultForm); }}>
+            <Button onClick={handleOpenAdd}>
               <Plus className="h-4 w-4 mr-2" />
               Add Product
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-background">
             <DialogHeader>
               <DialogTitle>
                 {editingId ? 'Edit Product' : 'Add New Product'}
@@ -341,20 +400,20 @@ export function AdminProducts() {
                     value={form.category_id}
                     onValueChange={(value) => setForm({ ...form, category_id: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-background">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
-                    <SelectContent className="z-50 bg-popover">
+                    <SelectContent className="z-[100] bg-popover border border-border shadow-lg">
                       {categoriesLoading ? (
-                        <SelectItem value="" disabled>Loading...</SelectItem>
+                        <div className="p-2 text-center text-muted-foreground">Loading...</div>
                       ) : categories && categories.length > 0 ? (
                         categories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
+                          <SelectItem key={cat.id} value={cat.id} className="cursor-pointer">
                             {cat.name}
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="" disabled>No categories available</SelectItem>
+                        <div className="p-2 text-center text-muted-foreground">No categories available</div>
                       )}
                     </SelectContent>
                   </Select>
@@ -407,6 +466,20 @@ export function AdminProducts() {
                 </div>
               </div>
 
+              <div className="flex items-center justify-between rounded-lg border border-primary/50 p-3 bg-primary/5">
+                <div>
+                  <Label htmlFor="is_ready_now" className="text-primary font-semibold">Ready Now</Label>
+                  <p className="text-xs text-muted-foreground">Mark as immediately available for shipping</p>
+                </div>
+                <Switch
+                  id="is_ready_now"
+                  checked={form.is_ready_now}
+                  onCheckedChange={(checked) =>
+                    setForm({ ...form, is_ready_now: checked })
+                  }
+                />
+              </div>
+
               {/* Image Upload Section */}
               <div className="border-t border-border pt-4">
                 <ProductImageUpload
@@ -423,6 +496,14 @@ export function AdminProducts() {
                   variants={variants}
                   onVariantsChange={setVariants}
                   basePrice={form.base_price}
+                />
+              </div>
+
+              {/* Shipping Rules Section */}
+              <div className="border-t border-border pt-4">
+                <ProductShippingRules
+                  rules={shippingRules}
+                  onRulesChange={setShippingRules}
                 />
               </div>
 
@@ -464,8 +545,8 @@ export function AdminProducts() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products?.map((product) => {
-                  const images = (product as any).product_images as { image_url: string }[] | undefined;
+                {products?.map((product: any) => {
+                  const images = product.product_images as { image_url: string }[] | undefined;
                   const firstImage = images?.[0]?.image_url;
                   
                   return (
@@ -483,11 +564,18 @@ export function AdminProducts() {
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="font-medium">{product.name}</TableCell>
+                      <TableCell className="font-medium">
+                        {product.name}
+                        {product.is_ready_now && (
+                          <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                            Ready
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         {(product.categories as { name: string } | null)?.name || '-'}
                       </TableCell>
-                      <TableCell>${Number(product.base_price).toFixed(2)}</TableCell>
+                      <TableCell>{formatPrice(Number(product.base_price))}</TableCell>
                       <TableCell>
                         <span
                           className={`inline-flex px-2 py-1 text-xs rounded-full ${
