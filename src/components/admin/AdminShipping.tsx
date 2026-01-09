@@ -298,7 +298,7 @@ export function AdminShipping() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Base Price ($)</Label>
+                  <Label>Base Price</Label>
                   <Input
                     type="number"
                     value={newClass.base_price}
@@ -374,7 +374,7 @@ export function AdminShipping() {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label>Base Price ($)</Label>
+                            <Label>Base Price</Label>
                             <Input
                               type="number"
                               value={editingClass.base_price}
