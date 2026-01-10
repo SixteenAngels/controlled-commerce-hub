@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { NotificationBell } from './NotificationBell';
 
 export function Header() {
   const { totalItems } = useCart();
@@ -91,6 +92,9 @@ export function Header() {
               </Button>
             )}
           </div>
+
+          {/* Notifications */}
+          <NotificationBell />
 
           {/* User */}
           {user ? (
