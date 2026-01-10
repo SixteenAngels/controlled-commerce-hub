@@ -67,16 +67,39 @@ export function AdminOrders() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ orderId, status }: { orderId: string; status: OrderStatus }) => {
+    mutationFn: async ({ orderId, status, userId }: { orderId: string; status: OrderStatus; userId?: string }) => {
       const { error } = await supabase
         .from('orders')
         .update({ status })
         .eq('id', orderId);
       if (error) throw error;
+
+      // Create notification for order status change
+      if (userId) {
+        const statusMessages: Record<OrderStatus, string> = {
+          pending: 'Your order is pending confirmation.',
+          confirmed: 'Your order has been confirmed!',
+          processing: 'Your order is being processed.',
+          shipped: 'Your order has been shipped!',
+          in_transit: 'Your order is in transit.',
+          out_for_delivery: 'Your order is out for delivery!',
+          delivered: 'Your order has been delivered!',
+          cancelled: 'Your order has been cancelled.',
+          refunded: 'Your order has been refunded.',
+        };
+
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          title: `Order Status: ${status.replace('_', ' ')}`,
+          message: statusMessages[status],
+          type: 'order_status',
+          data: { orderId, status },
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
-      toast.success('Order status updated');
+      toast.success('Order status updated and customer notified');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -220,7 +243,11 @@ export function AdminOrders() {
               <div className="flex flex-wrap gap-2">
                 <Select
                   value={order.status || 'pending'}
-                  onValueChange={(value) => updateStatusMutation.mutate({ orderId: order.id, status: value as OrderStatus })}
+                  onValueChange={(value) => updateStatusMutation.mutate({ 
+                    orderId: order.id, 
+                    status: value as OrderStatus,
+                    userId: order.user_id 
+                  })}
                 >
                   <SelectTrigger className="w-48">
                     <SelectValue placeholder="Update status" />

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Star, Truck, Users, Zap, Ship, Plane, Package, Minus, Plus, ShoppingCart, ArrowLeft, Loader2 } from 'lucide-react';
+import { Star, Truck, Users, Zap, Ship, Plane, Package, ShoppingCart, ArrowLeft, Loader2 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useProduct, ProductWithDetails } from '@/hooks/useProducts';
@@ -8,11 +8,13 @@ import { useCart } from '@/contexts/CartContext';
 import { ProductVariant, Product } from '@/types';
 import { ProductReviews } from '@/components/products/ProductReviews';
 import { RelatedProducts } from '@/components/products/RelatedProducts';
+import { VariantSelector } from '@/components/products/VariantSelector';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import { useCurrency } from '@/hooks/useCurrency';
 
 // Convert DB product to legacy Product type for cart
 function toCartProduct(product: ProductWithDetails): Product {
@@ -60,6 +62,7 @@ interface SelectedVariant {
   color: string | null;
   price: number;
   stock: number | null;
+  quantity: number;
 }
 
 interface ShippingRule {
@@ -81,12 +84,66 @@ interface ShippingRule {
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
-  const { data: product, isLoading, error } = useProduct(id);
+  const { data: product, isLoading } = useProduct(id);
   const { addToCart } = useCart();
+  const { formatPrice } = useCurrency();
 
   const [selectedVariants, setSelectedVariants] = useState<SelectedVariant[]>([]);
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [selectedShipping, setSelectedShipping] = useState<ShippingRule | null>(null);
+
+  const handleVariantToggle = (variant: { id: string; size: string | null; color: string | null; price: number; stock: number | null }) => {
+    const isSelected = selectedVariants.some((v) => v.id === variant.id);
+    if (isSelected) {
+      setSelectedVariants((prev) => prev.filter((v) => v.id !== variant.id));
+    } else {
+      setSelectedVariants((prev) => [...prev, { ...variant, quantity: 1 }]);
+    }
+  };
+
+  const handleQuantityChange = (variantId: string, quantity: number) => {
+    setSelectedVariants((prev) =>
+      prev.map((v) => (v.id === variantId ? { ...v, quantity } : v))
+    );
+  };
+
+  const totalPrice = useMemo(() => {
+    return selectedVariants.reduce((sum, variant) => {
+      return sum + variant.price * variant.quantity;
+    }, 0);
+  }, [selectedVariants]);
+
+  const handleAddToCart = () => {
+    if (!product) return;
+    
+    if (selectedVariants.length === 0) {
+      toast.error('Please select at least one variant');
+      return;
+    }
+
+    const cartProduct = toCartProduct(product);
+
+    selectedVariants.forEach((variant) => {
+      const cartVariant: ProductVariant = {
+        id: variant.id,
+        size: variant.size || undefined,
+        color: variant.color || undefined,
+        price: variant.price,
+        stock: variant.stock || 0,
+      };
+      addToCart(cartProduct, cartVariant, variant.quantity);
+    });
+
+    toast.success(`Added ${selectedVariants.length} item(s) to cart`);
+    setSelectedVariants([]);
+  };
+
+  const getShippingIcon = (typeName: string | undefined) => {
+    if (!typeName) return <Plane className="h-5 w-5" />;
+    const name = typeName.toLowerCase();
+    if (name.includes('sea')) return <Ship className="h-5 w-5" />;
+    if (name.includes('express')) return <Package className="h-5 w-5" />;
+    return <Plane className="h-5 w-5" />;
+  };
 
   if (isLoading) {
     return (
@@ -114,62 +171,6 @@ export default function ProductDetail() {
       </div>
     );
   }
-
-  const toggleVariant = (variant: SelectedVariant) => {
-    const isSelected = selectedVariants.some((v) => v.id === variant.id);
-    if (isSelected) {
-      setSelectedVariants((prev) => prev.filter((v) => v.id !== variant.id));
-      const newQuantities = { ...quantities };
-      delete newQuantities[variant.id];
-      setQuantities(newQuantities);
-    } else {
-      setSelectedVariants((prev) => [...prev, variant]);
-      setQuantities((prev) => ({ ...prev, [variant.id]: 1 }));
-    }
-  };
-
-  const updateQuantity = (variantId: string, delta: number) => {
-    setQuantities((prev) => ({
-      ...prev,
-      [variantId]: Math.max(1, (prev[variantId] || 1) + delta),
-    }));
-  };
-
-  const totalPrice = selectedVariants.reduce((sum, variant) => {
-    return sum + variant.price * (quantities[variant.id] || 1);
-  }, 0);
-
-  const handleAddToCart = () => {
-    if (selectedVariants.length === 0) {
-      toast.error('Please select at least one variant');
-      return;
-    }
-
-    const cartProduct = toCartProduct(product);
-
-    selectedVariants.forEach((variant) => {
-      const cartVariant: ProductVariant = {
-        id: variant.id,
-        size: variant.size || undefined,
-        color: variant.color || undefined,
-        price: variant.price,
-        stock: variant.stock || 0,
-      };
-      addToCart(cartProduct, cartVariant, quantities[variant.id] || 1);
-    });
-
-    toast.success(`Added ${selectedVariants.length} item(s) to cart`);
-    setSelectedVariants([]);
-    setQuantities({});
-  };
-
-  const getShippingIcon = (typeName: string | undefined) => {
-    if (!typeName) return <Plane className="h-5 w-5" />;
-    const name = typeName.toLowerCase();
-    if (name.includes('sea')) return <Ship className="h-5 w-5" />;
-    if (name.includes('express')) return <Package className="h-5 w-5" />;
-    return <Plane className="h-5 w-5" />;
-  };
 
   const availableShipping = product.shipping_rules.filter((r) => r.is_allowed && r.shipping_class);
 
@@ -255,8 +256,9 @@ export default function ProductDetail() {
             {/* Price */}
             <div>
               <p className="text-3xl font-bold text-primary">
-                ${product.base_price.toFixed(2)}
+                {formatPrice(product.base_price)}
               </p>
+              <p className="text-sm text-muted-foreground mt-1">Starting from</p>
             </div>
 
             {/* Description */}
@@ -264,77 +266,21 @@ export default function ProductDetail() {
 
             <Separator />
 
-            {/* Variant Selection */}
+            {/* Visual Variant Selection */}
             <div className="space-y-4">
               <h3 className="font-semibold text-foreground">
-                Select Variants (Multi-select enabled)
+                Select Options
               </h3>
-              <p className="text-sm text-muted-foreground">
-                Click on variants to add them to your order
-              </p>
 
               {product.variants.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No variants available</p>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {product.variants.map((variant) => {
-                    const isSelected = selectedVariants.some((v) => v.id === variant.id);
-                    return (
-                      <Card
-                        key={variant.id}
-                        className={`cursor-pointer transition-all ${
-                          isSelected
-                            ? 'border-primary ring-2 ring-primary/20'
-                            : 'hover:border-primary/50'
-                        }`}
-                        onClick={() => toggleVariant(variant)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium text-foreground">
-                                {variant.color || 'Default'}
-                                {variant.size && ` - ${variant.size}`}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                ${variant.price.toFixed(2)} • {variant.stock || 0} in stock
-                              </p>
-                            </div>
-                            {isSelected && (
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  size="icon"
-                                  variant="outline"
-                                  className="h-8 w-8"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    updateQuantity(variant.id, -1);
-                                  }}
-                                >
-                                  <Minus className="h-3 w-3" />
-                                </Button>
-                                <span className="w-8 text-center font-medium">
-                                  {quantities[variant.id] || 1}
-                                </span>
-                                <Button
-                                  size="icon"
-                                  variant="outline"
-                                  className="h-8 w-8"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    updateQuantity(variant.id, 1);
-                                  }}
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
+                <VariantSelector
+                  variants={product.variants}
+                  selectedVariants={selectedVariants}
+                  onVariantToggle={handleVariantToggle}
+                  onQuantityChange={handleQuantityChange}
+                />
               )}
             </div>
 
@@ -369,7 +315,7 @@ export default function ProductDetail() {
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-primary">
-                            ${option.price.toFixed(2)}
+                            {formatPrice(option.price)}
                           </p>
                         </div>
                       </CardContent>
@@ -389,7 +335,7 @@ export default function ProductDetail() {
                     {selectedVariants.length} variant(s) selected
                   </p>
                   <p className="text-2xl font-bold text-primary">
-                    Total: ${totalPrice.toFixed(2)}
+                    Total: {formatPrice(totalPrice)}
                   </p>
                 </div>
               )}
