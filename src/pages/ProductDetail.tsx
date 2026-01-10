@@ -9,6 +9,7 @@ import { ProductVariant, Product } from '@/types';
 import { ProductReviews } from '@/components/products/ProductReviews';
 import { RelatedProducts } from '@/components/products/RelatedProducts';
 import { VariantSelector } from '@/components/products/VariantSelector';
+import { ProductImageGallery } from '@/components/products/ProductImageGallery';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -188,29 +189,8 @@ export default function ProductDetail() {
         </Link>
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Product Image */}
-          <div className="space-y-4">
-            <div className="aspect-square overflow-hidden rounded-xl bg-card border border-border">
-              <img
-                src={product.images[0] || 'https://via.placeholder.com/400'}
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            {/* Thumbnail gallery */}
-            {product.images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto">
-                {product.images.map((img, idx) => (
-                  <div
-                    key={idx}
-                    className="w-20 h-20 rounded-lg overflow-hidden border border-border flex-shrink-0"
-                  >
-                    <img src={img} alt={`${product.name} ${idx + 1}`} className="w-full h-full object-cover" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Product Image Gallery */}
+          <ProductImageGallery images={product.images} productName={product.name} />
 
           {/* Product Info */}
           <div className="space-y-6">
