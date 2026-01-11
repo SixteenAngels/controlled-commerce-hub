@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { useProducts, ProductWithDetails } from '@/hooks/useProducts';
 import { ProductCard } from '@/components/products/ProductCard';
+import { ProductQuickView } from '@/components/products/ProductQuickView';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -48,6 +50,7 @@ function toProductCardFormat(product: ProductWithDetails) {
 export function FeaturedProducts() {
   const { data: products, isLoading } = useProducts();
   const featuredProducts = products?.slice(0, 4) || [];
+  const [quickViewProduct, setQuickViewProduct] = useState<any>(null);
 
   return (
     <section className="py-16 bg-card">
@@ -79,9 +82,16 @@ export function FeaturedProducts() {
                   <Skeleton className="h-6 w-24" />
                 </div>
               ))
-            : featuredProducts.map((product) => (
-                <ProductCard key={product.id} product={toProductCardFormat(product)} />
-              ))}
+            : featuredProducts.map((product) => {
+                const cardProduct = toProductCardFormat(product);
+                return (
+                  <ProductCard 
+                    key={product.id} 
+                    product={cardProduct}
+                    onQuickView={(p) => setQuickViewProduct(p)}
+                  />
+                );
+              })}
         </div>
 
         {!isLoading && featuredProducts.length === 0 && (
@@ -89,6 +99,13 @@ export function FeaturedProducts() {
             <p className="text-muted-foreground">No products available yet.</p>
           </div>
         )}
+
+        {/* Quick View Modal */}
+        <ProductQuickView
+          product={quickViewProduct}
+          open={!!quickViewProduct}
+          onOpenChange={(open) => !open && setQuickViewProduct(null)}
+        />
       </div>
     </section>
   );

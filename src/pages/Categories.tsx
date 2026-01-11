@@ -1,14 +1,58 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useCategories } from '@/hooks/useCategories';
-import { useProducts } from '@/hooks/useProducts';
+import { useProducts, ProductWithDetails } from '@/hooks/useProducts';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ArrowRight, Loader2, Eye } from 'lucide-react';
+import { ProductQuickView } from '@/components/products/ProductQuickView';
+
+// Convert product to quick view format
+function toQuickViewFormat(product: ProductWithDetails) {
+  return {
+    id: product.id,
+    name: product.name,
+    description: product.description || '',
+    category: product.category_name || 'Uncategorized',
+    basePrice: product.base_price,
+    images: product.images.length > 0 ? product.images : ['https://via.placeholder.com/400'],
+    variants: product.variants.map((v) => ({
+      id: v.id,
+      size: v.size || undefined,
+      color: v.color || undefined,
+      price: v.price,
+      stock: v.stock || 0,
+    })),
+    shippingOptions: product.shipping_rules
+      .filter((r) => r.is_allowed && r.shipping_class)
+      .map((r) => ({
+        id: r.id,
+        type: (r.shipping_class?.shipping_type?.name?.toLowerCase().includes('sea')
+          ? 'sea'
+          : r.shipping_class?.shipping_type?.name?.toLowerCase().includes('express')
+          ? 'air_express'
+          : 'air_normal') as 'sea' | 'air_normal' | 'air_express',
+        name: r.shipping_class?.name || '',
+        price: r.price,
+        estimatedDays: r.shipping_class
+          ? `${r.shipping_class.estimated_days_min}-${r.shipping_class.estimated_days_max} days`
+          : '',
+        available: true,
+      })),
+    isGroupBuyEligible: product.is_group_buy_eligible || false,
+    isFlashDeal: product.is_flash_deal || false,
+    isFreeShippingEligible: product.is_free_shipping || false,
+    rating: product.rating || 0,
+    reviewCount: product.review_count || 0,
+  };
+}
 
 export default function Categories() {
   const { data: categories, isLoading: categoriesLoading } = useCategories();
   const { data: products, isLoading: productsLoading } = useProducts();
+  const [quickViewProduct, setQuickViewProduct] = useState<any>(null);
 
   const getCategoryProducts = (categoryId: string) => {
     return products?.filter((p) => p.category_id === categoryId).slice(0, 3) || [];
@@ -73,13 +117,26 @@ export default function Categories() {
                   {categoryProducts.length > 0 ? (
                     categoryProducts.map((product) => (
                       <Link key={product.id} to={`/product/${product.id}`}>
-                        <Card className="group overflow-hidden hover:shadow-md transition-all">
-                          <div className="aspect-video overflow-hidden">
+                        <Card className="group overflow-hidden hover:shadow-md transition-all relative">
+                          <div className="aspect-video overflow-hidden relative">
                             <img
                               src={product.images[0] || '/placeholder.svg'}
                               alt={product.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
+                            {/* Quick View Button */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="absolute top-2 right-2 bg-background/80 hover:bg-background z-10 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setQuickViewProduct(toQuickViewFormat(product));
+                              }}
+                            >
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            </Button>
                           </div>
                           <CardContent className="p-4">
                             <h3 className="font-semibold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
@@ -104,6 +161,13 @@ export default function Categories() {
             );
           })}
         </div>
+
+        {/* Quick View Modal */}
+        <ProductQuickView
+          product={quickViewProduct}
+          open={!!quickViewProduct}
+          onOpenChange={(open) => !open && setQuickViewProduct(null)}
+        />
       </main>
       <Footer />
     </div>
