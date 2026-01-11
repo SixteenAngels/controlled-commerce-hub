@@ -4,6 +4,7 @@ import { Filter, SlidersHorizontal, Loader2, Search, X } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { ProductCard } from '@/components/products/ProductCard';
+import { ProductQuickView } from '@/components/products/ProductQuickView';
 import { useProducts, ProductWithDetails } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
 import { Button } from '@/components/ui/button';
@@ -80,6 +81,7 @@ export default function Products() {
     flashDealsOnly: false,
     freeShippingOnly: false,
   });
+  const [quickViewProduct, setQuickViewProduct] = useState<any>(null);
 
   const { data: products, isLoading: productsLoading } = useProducts();
   const { data: categories, isLoading: categoriesLoading } = useCategories();
@@ -338,9 +340,16 @@ export default function Products() {
         {/* Product Grid */}
         {!isLoading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={toProductCardFormat(product)} />
-            ))}
+            {filteredProducts.map((product) => {
+              const cardProduct = toProductCardFormat(product);
+              return (
+                <ProductCard 
+                  key={product.id} 
+                  product={cardProduct}
+                  onQuickView={(p) => setQuickViewProduct(p)}
+                />
+              );
+            })}
           </div>
         )}
 
@@ -365,6 +374,13 @@ export default function Products() {
             </Button>
           </div>
         )}
+
+        {/* Quick View Modal */}
+        <ProductQuickView
+          product={quickViewProduct}
+          open={!!quickViewProduct}
+          onOpenChange={(open) => !open && setQuickViewProduct(null)}
+        />
       </main>
       <Footer />
     </div>
