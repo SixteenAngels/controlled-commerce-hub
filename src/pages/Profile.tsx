@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { TwoFactorManage } from '@/components/auth/TwoFactorManage';
 import { SessionManagement } from '@/components/auth/SessionManagement';
+import { PushNotificationSettings } from '@/components/profile/PushNotificationSettings';
 
 interface Profile {
   name: string | null;
@@ -292,6 +293,11 @@ export default function Profile() {
         {/* Session Management */}
         <div className="mb-8">
           <SessionManagement />
+        </div>
+
+        {/* Push Notification Settings */}
+        <div className="mb-8">
+          <PushNotificationSettings />
         </div>
 
         {/* Addresses */}
