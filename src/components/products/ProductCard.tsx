@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Star, Users, Zap, Truck, Heart, GitCompare, Clock } from 'lucide-react';
+import { Star, Users, Zap, Truck, Heart, GitCompare, Clock, Eye } from 'lucide-react';
 import { Product } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,9 +16,10 @@ interface ExtendedProduct extends Product {
 
 interface ProductCardProps {
   product: ExtendedProduct;
+  onQuickView?: (product: ExtendedProduct) => void;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, onQuickView }: ProductCardProps) {
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
   const { isInWishlist, toggleWishlist } = useWishlist();
@@ -52,6 +53,12 @@ export function ProductCard({ product }: ProductCardProps) {
     }
   };
 
+  const handleQuickView = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onQuickView?.(product);
+  };
+
   return (
     <Link to={`/product/${product.id}`}>
       <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 border-border bg-card">
@@ -83,6 +90,16 @@ export function ProductCard({ product }: ProductCardProps) {
                 className={`h-4 w-4 ${inCompare ? 'text-primary' : 'text-muted-foreground'}`}
               />
             </Button>
+            {onQuickView && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="bg-background/80 hover:bg-background z-10 h-8 w-8"
+                onClick={handleQuickView}
+              >
+                <Eye className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            )}
           </div>
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
