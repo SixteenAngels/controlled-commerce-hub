@@ -67,27 +67,27 @@ export function AdminOrders() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ orderId, status, userId }: { orderId: string; status: OrderStatus; userId?: string }) => {
+    mutationFn: async ({ orderId, status, userId, orderNumber }: { orderId: string; status: OrderStatus; userId?: string; orderNumber?: string }) => {
       const { error } = await supabase
         .from('orders')
         .update({ status })
         .eq('id', orderId);
       if (error) throw error;
 
-      // Create notification for order status change
-      if (userId) {
-        const statusMessages: Record<OrderStatus, string> = {
-          pending: 'Your order is pending confirmation.',
-          confirmed: 'Your order has been confirmed!',
-          processing: 'Your order is being processed.',
-          shipped: 'Your order has been shipped!',
-          in_transit: 'Your order is in transit.',
-          out_for_delivery: 'Your order is out for delivery!',
-          delivered: 'Your order has been delivered!',
-          cancelled: 'Your order has been cancelled.',
-          refunded: 'Your order has been refunded.',
-        };
+      const statusMessages: Record<OrderStatus, string> = {
+        pending: 'Your order is pending confirmation.',
+        confirmed: 'Your order has been confirmed!',
+        processing: 'Your order is being processed.',
+        shipped: 'Your order has been shipped!',
+        in_transit: 'Your order is in transit.',
+        out_for_delivery: 'Your order is out for delivery!',
+        delivered: 'Your order has been delivered!',
+        cancelled: 'Your order has been cancelled.',
+        refunded: 'Your order has been refunded.',
+      };
 
+      // Create in-app notification for order status change
+      if (userId) {
         await supabase.from('notifications').insert({
           user_id: userId,
           title: `Order Status: ${status.replace('_', ' ')}`,
@@ -95,6 +95,21 @@ export function AdminOrders() {
           type: 'order_status',
           data: { orderId, status },
         });
+
+        // Send push notification
+        try {
+          await supabase.functions.invoke('send-push-notification', {
+            body: {
+              user_id: userId,
+              title: `Order ${orderNumber || 'Update'}`,
+              body: statusMessages[status],
+              data: { orderId, status, type: 'order_status' },
+            },
+          });
+        } catch (pushError) {
+          console.log('Push notification not sent:', pushError);
+          // Don't fail the mutation if push fails
+        }
       }
     },
     onSuccess: () => {
@@ -246,7 +261,8 @@ export function AdminOrders() {
                   onValueChange={(value) => updateStatusMutation.mutate({ 
                     orderId: order.id, 
                     status: value as OrderStatus,
-                    userId: order.user_id 
+                    userId: order.user_id,
+                    orderNumber: order.order_number 
                   })}
                 >
                   <SelectTrigger className="w-48">
