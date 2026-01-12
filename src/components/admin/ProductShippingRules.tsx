@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Ship, Plane, Package } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, Ship, Plane, Package, Settings, AlertCircle } from 'lucide-react';
 
 export interface ShippingRuleData {
   shipping_class_id: string;
@@ -93,8 +95,24 @@ export function ProductShippingRules({ rules, onRulesChange }: ProductShippingRu
 
   if (!shippingClasses || shippingClasses.length === 0) {
     return (
-      <div className="text-sm text-muted-foreground py-2">
-        No shipping classes available. Add shipping classes in Shipping settings first.
+      <div className="rounded-lg border border-dashed border-primary/50 bg-primary/5 p-4">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-full bg-primary/10">
+            <AlertCircle className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-medium text-foreground mb-1">No Shipping Methods Configured</h4>
+            <p className="text-sm text-muted-foreground mb-3">
+              You need to set up shipping types and classes before you can assign shipping prices to products.
+            </p>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/admin/shipping" className="inline-flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Go to Shipping Settings
+              </Link>
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
