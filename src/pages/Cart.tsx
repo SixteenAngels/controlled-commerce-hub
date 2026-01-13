@@ -3,6 +3,7 @@ import { Trash2, Minus, Plus, Ship, Plane, Package, ArrowLeft, ShoppingBag } fro
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useCart } from '@/contexts/CartContext';
+import { useCurrency } from '@/hooks/useCurrency';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -10,6 +11,7 @@ import { toast } from 'sonner';
 
 export default function Cart() {
   const navigate = useNavigate();
+  const { formatPrice } = useCurrency();
   const {
     items,
     selectedShipping,
@@ -147,7 +149,7 @@ export default function Cart() {
                           </Button>
                         </div>
                         <p className="font-semibold text-primary">
-                          ${(item.variant.price * item.quantity).toFixed(2)}
+                          {formatPrice(item.variant.price * item.quantity)}
                         </p>
                       </div>
                     </div>
@@ -202,7 +204,7 @@ export default function Cart() {
                           </div>
                         </div>
                         <p className="font-medium text-foreground">
-                          ${option.price.toFixed(2)}
+                          {formatPrice(option.price)}
                         </p>
                       </div>
                     </div>
@@ -215,13 +217,13 @@ export default function Cart() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span className="text-foreground">${subtotal.toFixed(2)}</span>
+                    <span className="text-foreground">{formatPrice(subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Shipping</span>
                     <span className="text-foreground">
                       {selectedShipping
-                        ? `$${shippingCost.toFixed(2)}`
+                        ? formatPrice(shippingCost)
                         : 'Select shipping'}
                     </span>
                   </div>
@@ -229,7 +231,7 @@ export default function Cart() {
                   <div className="flex justify-between">
                     <span className="font-semibold text-foreground">Total</span>
                     <span className="text-xl font-bold text-primary">
-                      ${total.toFixed(2)}
+                      {formatPrice(total)}
                     </span>
                   </div>
                 </div>
