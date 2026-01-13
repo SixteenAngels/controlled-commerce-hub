@@ -216,6 +216,22 @@ export default function ProductDetail() {
               )}
             </div>
 
+            {/* Start Group Buy Button */}
+            {product.is_group_buy_eligible && (
+              <div className="p-4 rounded-lg bg-accent/10 border border-accent/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">Start a Group Buy</p>
+                    <p className="text-sm text-muted-foreground">Get discounts when others join!</p>
+                  </div>
+                  <Button variant="secondary" onClick={() => toast.info('Group buy feature coming soon! Contact admin to start a group buy.')}>
+                    <Users className="h-4 w-4 mr-2" />
+                    Start Group Buy
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Title & Rating */}
             <div>
               <p className="text-sm text-muted-foreground mb-1">{product.category_name || 'Uncategorized'}</p>

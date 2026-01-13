@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Plus, Ship, Plane, Package, CreditCard, Check, Tag, X } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCurrency } from '@/hooks/useCurrency';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -59,6 +60,7 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
   const { items, subtotal, clearCart } = useCart();
+  const { formatPrice, currency } = useCurrency();
   
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
@@ -132,24 +134,89 @@ export default function Checkout() {
     }
   };
 
+  // Get product IDs from cart
+  const cartProductIds = useMemo(() => {
+    return [...new Set(items.map(item => item.product.id))];
+  }, [items]);
+
+  // Fetch shipping classes that are allowed for ALL products in cart
   const fetchShippingClasses = async () => {
-    const { data, error } = await supabase
-      .from('shipping_classes')
+    if (cartProductIds.length === 0) {
+      setShippingClasses([]);
+      return;
+    }
+
+    // Get all shipping rules for products in cart
+    const { data: shippingRules, error: rulesError } = await supabase
+      .from('product_shipping_rules')
       .select(`
-        id,
-        name,
-        base_price,
-        estimated_days_min,
-        estimated_days_max,
-        shipping_type:shipping_types(id, name)
+        product_id,
+        shipping_class_id,
+        price,
+        is_allowed,
+        shipping_classes!inner(
+          id,
+          name,
+          base_price,
+          estimated_days_min,
+          estimated_days_max,
+          is_active,
+          shipping_types(id, name)
+        )
       `)
-      .eq('is_active', true);
+      .in('product_id', cartProductIds)
+      .eq('is_allowed', true);
+
+    if (rulesError) {
+      console.error('Error fetching shipping rules:', rulesError);
+      return;
+    }
+
+    // Find shipping classes that are allowed for ALL products
+    const shippingClassCounts = new Map<string, { count: number; data: ShippingClass; totalPrice: number }>();
     
-    if (data) {
-      setShippingClasses(data as unknown as ShippingClass[]);
-      if (data.length > 0) {
-        setSelectedShippingId(data[0].id);
+    shippingRules?.forEach((rule: any) => {
+      const sc = rule.shipping_classes;
+      if (!sc || !sc.is_active) return;
+      
+      const existing = shippingClassCounts.get(sc.id);
+      if (existing) {
+        existing.count++;
+        existing.totalPrice += rule.price;
+      } else {
+        shippingClassCounts.set(sc.id, {
+          count: 1,
+          totalPrice: rule.price,
+          data: {
+            id: sc.id,
+            name: sc.name,
+            base_price: sc.base_price,
+            estimated_days_min: sc.estimated_days_min,
+            estimated_days_max: sc.estimated_days_max,
+            shipping_type: sc.shipping_types ? {
+              id: sc.shipping_types.id,
+              name: sc.shipping_types.name
+            } : { id: '', name: '' }
+          }
+        });
       }
+    });
+
+    // Only include shipping classes available for ALL cart products
+    const validClasses: ShippingClass[] = [];
+    shippingClassCounts.forEach((value, key) => {
+      if (value.count >= cartProductIds.length) {
+        // Use the sum of per-product prices
+        validClasses.push({
+          ...value.data,
+          base_price: value.totalPrice
+        });
+      }
+    });
+
+    setShippingClasses(validClasses);
+    if (validClasses.length > 0 && !selectedShippingId) {
+      setSelectedShippingId(validClasses[0].id);
     }
   };
 
@@ -238,7 +305,7 @@ export default function Checkout() {
     
     // Check minimum order amount
     if (data.min_order_amount && subtotal < data.min_order_amount) {
-      toast.error(`Minimum order amount of ₦${data.min_order_amount.toLocaleString()} required`);
+      toast.error(`Minimum order amount of ${formatPrice(data.min_order_amount)} required`);
       setIsApplyingCoupon(false);
       return;
     }
@@ -296,8 +363,8 @@ export default function Checkout() {
       const handler = window.PaystackPop.setup({
         key: configData.publicKey,
         email: user.email,
-        amount: Math.round(total * 100), // Paystack expects amount in kobo/cents
-        currency: 'NGN',
+        amount: Math.round(total * 100), // Paystack expects amount in pesewas for GHS
+        currency: currency.code, // Use dynamic currency (GHS)
         ref: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         callback: async (response: { reference: string }) => {
           await createOrder(response.reference);
@@ -587,7 +654,7 @@ export default function Checkout() {
                             </div>
                           </div>
                           <p className="font-semibold text-foreground">
-                            ₦{shipping.base_price.toLocaleString()}
+                            {formatPrice(shipping.base_price)}
                           </p>
                         </div>
                       </div>
@@ -620,7 +687,7 @@ export default function Checkout() {
                         </p>
                       </div>
                       <p className="font-medium text-foreground">
-                        ₦{(item.variant.price * item.quantity).toLocaleString()}
+                        {formatPrice(item.variant.price * item.quantity)}
                       </p>
                     </div>
                   ))}
@@ -649,7 +716,7 @@ export default function Checkout() {
                         <p className="text-sm text-muted-foreground">
                           {appliedCoupon.type === 'percentage' 
                             ? `${appliedCoupon.value}% off` 
-                            : `₦${appliedCoupon.value.toLocaleString()} off`}
+                            : `${formatPrice(appliedCoupon.value)} off`}
                         </p>
                       </div>
                       <Button variant="ghost" size="icon" onClick={removeCoupon}>
@@ -680,22 +747,22 @@ export default function Checkout() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span className="text-foreground">₦{subtotal.toLocaleString()}</span>
+                    <span className="text-foreground">{formatPrice(subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Shipping</span>
-                    <span className="text-foreground">₦{shippingCost.toLocaleString()}</span>
+                    <span className="text-foreground">{formatPrice(shippingCost)}</span>
                   </div>
                   {appliedCoupon && (
                     <div className="flex justify-between text-sm text-green-600">
                       <span>Discount</span>
-                      <span>-₦{discount.toLocaleString()}</span>
+                      <span>-{formatPrice(discount)}</span>
                     </div>
                   )}
                   <Separator />
                   <div className="flex justify-between">
                     <span className="font-semibold text-foreground">Total</span>
-                    <span className="text-xl font-bold text-primary">₦{total.toLocaleString()}</span>
+                    <span className="text-xl font-bold text-primary">{formatPrice(total)}</span>
                   </div>
                 </div>
 

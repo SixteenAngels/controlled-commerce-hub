@@ -4,6 +4,7 @@ import { Package, Truck, MapPin, ChevronRight, Clock, CheckCircle, XCircle, Load
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCurrency } from '@/hooks/useCurrency';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -55,6 +56,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
 export default function MyOrders() {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
+  const { formatPrice } = useCurrency();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
@@ -204,7 +206,7 @@ export default function MyOrders() {
                                 </p>
                               </div>
                               <p className="font-medium text-foreground">
-                                ₦{item.total_price.toLocaleString()}
+                                {formatPrice(item.total_price)}
                               </p>
                             </div>
                           ))}
@@ -234,7 +236,7 @@ export default function MyOrders() {
                               </Button>
                             </Link>
                             <p className="font-semibold text-primary">
-                              ₦{order.total_amount.toLocaleString()}
+                              {formatPrice(order.total_amount)}
                             </p>
                           </div>
                         </div>

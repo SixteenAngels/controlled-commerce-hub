@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Users, Clock } from 'lucide-react';
 import { GroupBuyWithProduct } from '@/hooks/useGroupBuys';
+import { useCurrency } from '@/hooks/useCurrency';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -11,6 +12,8 @@ interface GroupBuyCardProps {
 }
 
 export function GroupBuyCard({ groupBuy }: GroupBuyCardProps) {
+  const { formatPrice } = useCurrency();
+  
   if (!groupBuy.product) return null;
 
   const progress = ((groupBuy.current_participants || 0) / groupBuy.min_participants) * 100;
@@ -42,10 +45,10 @@ export function GroupBuyCard({ groupBuy }: GroupBuyCardProps) {
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-sm text-muted-foreground line-through">
-              ₦{groupBuy.product.base_price.toLocaleString()}
+              {formatPrice(groupBuy.product.base_price)}
             </p>
             <p className="text-xl font-bold text-primary">
-              ₦{discountedPrice.toLocaleString()}
+              {formatPrice(discountedPrice)}
             </p>
           </div>
           <div className="flex items-center gap-1 text-muted-foreground">
