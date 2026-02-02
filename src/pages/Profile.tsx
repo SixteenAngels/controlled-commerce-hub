@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useRefundRequests } from '@/hooks/useRefundRequests';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +24,7 @@ import {
 import { TwoFactorManage } from '@/components/auth/TwoFactorManage';
 import { SessionManagement } from '@/components/auth/SessionManagement';
 import { PushNotificationSettings } from '@/components/profile/PushNotificationSettings';
+import { RefundRequestDialog } from '@/components/orders/RefundRequestDialog';
 
 interface Profile {
   name: string | null;
@@ -78,6 +80,7 @@ export default function Profile() {
   const { user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { formatPrice } = useCurrency();
+  const { refundRequests, isLoading: refundsLoading } = useRefundRequests();
   const [profile, setProfile] = useState<Profile>({ name: null, email: null, phone: null });
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -639,6 +642,16 @@ export default function Profile() {
                               <Link to={`/track-order/${order.id}`}>
                                 <Button variant="outline" size="sm">Track Order</Button>
                               </Link>
+                              {order.status === 'delivered' && (
+                                <RefundRequestDialog
+                                  order={{
+                                    id: order.id,
+                                    order_number: order.order_number,
+                                    total_amount: order.total_amount,
+                                    status: order.status,
+                                  }}
+                                />
+                              )}
                               <p className="font-semibold text-primary">{formatPrice(order.total_amount)}</p>
                             </div>
                           </div>
@@ -662,15 +675,79 @@ export default function Profile() {
                 <CardDescription>View your refund requests and returns</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                    <RefreshCcw className="h-8 w-8 text-muted-foreground" />
+                {refundsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
                   </div>
-                  <h3 className="text-lg font-medium text-foreground mb-2">No refund requests</h3>
-                  <p className="text-muted-foreground mb-6">
-                    You haven't requested any refunds yet. If you need to return an item, go to your order and select "Request Refund".
-                  </p>
-                </div>
+                ) : refundRequests.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                      <RefreshCcw className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-medium text-foreground mb-2">No refund requests</h3>
+                    <p className="text-muted-foreground mb-6">
+                      You haven't requested any refunds yet. If you need to return an item, go to your order and select "Request Refund".
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {refundRequests.map((request) => (
+                      <div key={request.id} className="border border-border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <p className="font-medium text-foreground">
+                              Order {request.order?.order_number || 'Unknown'}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Requested on {new Date(request.created_at).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </p>
+                          </div>
+                          <Badge
+                            className={
+                              request.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : request.status === 'approved'
+                                ? 'bg-primary/20 text-primary'
+                                : request.status === 'rejected'
+                                ? 'bg-destructive/20 text-destructive'
+                                : 'bg-green-100 text-green-800'
+                            }
+                          >
+                            {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                          </Badge>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <p>
+                            <span className="text-muted-foreground">Reason: </span>
+                            <span className="text-foreground">{request.reason}</span>
+                          </p>
+                          {request.details && (
+                            <p>
+                              <span className="text-muted-foreground">Details: </span>
+                              <span className="text-foreground">{request.details}</span>
+                            </p>
+                          )}
+                          <p>
+                            <span className="text-muted-foreground">Amount: </span>
+                            <span className="font-semibold text-primary">
+                              {formatPrice(request.refund_amount || request.order?.total_amount || 0)}
+                            </span>
+                          </p>
+                          {request.admin_notes && (
+                            <div className="mt-2 p-3 rounded-lg bg-muted">
+                              <p className="text-xs text-muted-foreground mb-1">Admin response:</p>
+                              <p className="text-foreground">{request.admin_notes}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
