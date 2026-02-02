@@ -10,6 +10,7 @@ import { ProductReviews } from '@/components/products/ProductReviews';
 import { RelatedProducts } from '@/components/products/RelatedProducts';
 import { VariantSelector } from '@/components/products/VariantSelector';
 import { ProductImageGallery } from '@/components/products/ProductImageGallery';
+import { StartGroupBuyDialog } from '@/components/groupbuy/StartGroupBuyDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -224,10 +225,13 @@ export default function ProductDetail() {
                     <p className="font-medium text-foreground">Start a Group Buy</p>
                     <p className="text-sm text-muted-foreground">Get discounts when others join!</p>
                   </div>
-                  <Button variant="secondary" onClick={() => toast.info('Group buy feature coming soon! Contact admin to start a group buy.')}>
-                    <Users className="h-4 w-4 mr-2" />
-                    Start Group Buy
-                  </Button>
+                  <StartGroupBuyDialog
+                    product={{
+                      id: product.id,
+                      name: product.name,
+                      base_price: product.base_price,
+                    }}
+                  />
                 </div>
               </div>
             )}
