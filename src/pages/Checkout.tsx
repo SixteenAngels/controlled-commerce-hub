@@ -146,7 +146,7 @@ export default function Checkout() {
       return;
     }
 
-    // Get all shipping rules for products in cart
+    // Get all shipping rules for products in cart - only active shipping classes
     const { data: shippingRules, error: rulesError } = await supabase
       .from('product_shipping_rules')
       .select(`
@@ -161,11 +161,12 @@ export default function Checkout() {
           estimated_days_min,
           estimated_days_max,
           is_active,
-          shipping_types(id, name)
+          shipping_types!inner(id, name, is_active)
         )
       `)
       .in('product_id', cartProductIds)
-      .eq('is_allowed', true);
+      .eq('is_allowed', true)
+      .eq('shipping_classes.is_active', true);
 
     if (rulesError) {
       console.error('Error fetching shipping rules:', rulesError);
@@ -348,14 +349,28 @@ export default function Checkout() {
       return;
     }
 
+    // Check if Paystack script is loaded
+    if (!window.PaystackPop) {
+      toast.error('Payment system is loading. Please try again in a moment.');
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
       // Get Paystack public key from edge function
       const { data: configData, error: configError } = await supabase.functions.invoke('get-paystack-key');
       
-      if (configError || !configData?.publicKey) {
-        toast.error('Payment configuration error');
+      if (configError) {
+        console.error('Config error:', configError);
+        toast.error('Unable to connect to payment service. Please try again.');
+        setIsProcessing(false);
+        return;
+      }
+      
+      if (!configData?.publicKey) {
+        console.error('No public key returned');
+        toast.error('Payment configuration error. Please contact support.');
         setIsProcessing(false);
         return;
       }
@@ -364,7 +379,7 @@ export default function Checkout() {
         key: configData.publicKey,
         email: user.email,
         amount: Math.round(total * 100), // Paystack expects amount in pesewas for GHS
-        currency: currency.code, // Use dynamic currency (GHS)
+        currency: 'GHS', // Always use GHS for Paystack
         ref: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         callback: async (response: { reference: string }) => {
           await createOrder(response.reference);
@@ -376,9 +391,9 @@ export default function Checkout() {
       });
 
       handler.openIframe();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Payment error:', error);
-      toast.error('Payment initialization failed');
+      toast.error(error?.message || 'Payment initialization failed. Please try again.');
       setIsProcessing(false);
     }
   };
