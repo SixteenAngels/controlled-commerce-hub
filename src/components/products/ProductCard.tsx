@@ -17,9 +17,10 @@ interface ExtendedProduct extends Product {
 interface ProductCardProps {
   product: ExtendedProduct;
   onQuickView?: (product: ExtendedProduct) => void;
+  viewMode?: 'grid' | 'list';
 }
 
-export function ProductCard({ product, onQuickView }: ProductCardProps) {
+export function ProductCard({ product, onQuickView, viewMode = 'grid' }: ProductCardProps) {
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
   const { isInWishlist, toggleWishlist } = useWishlist();
@@ -59,6 +60,108 @@ export function ProductCard({ product, onQuickView }: ProductCardProps) {
     onQuickView?.(product);
   };
 
+  if (viewMode === 'list') {
+    return (
+      <Link to={`/product/${product.id}`}>
+        <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 border-border bg-card">
+          <div className="flex flex-col sm:flex-row">
+            {/* Image */}
+            <div className="relative w-full sm:w-48 h-48 sm:h-auto flex-shrink-0 overflow-hidden">
+              <img
+                src={product.images[0]}
+                alt={product.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+              {/* Badges */}
+              <div className="absolute top-2 left-2 flex flex-col gap-1">
+                {product.isReadyNow && (
+                  <Badge className="bg-primary text-primary-foreground text-xs">
+                    <Clock className="h-3 w-3 mr-1" />
+                    Ready Now
+                  </Badge>
+                )}
+                {product.isFlashDeal && (
+                  <Badge className="bg-destructive text-destructive-foreground text-xs">
+                    <Zap className="h-3 w-3 mr-1" />
+                    Flash Deal
+                  </Badge>
+                )}
+              </div>
+            </div>
+            {/* Content */}
+            <CardContent className="flex-1 p-4 flex flex-col justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">{product.category}</p>
+                <h3 className="font-semibold text-foreground text-lg mb-2 group-hover:text-primary transition-colors">
+                  {product.name}
+                </h3>
+                <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                  {product.description}
+                </p>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {product.isGroupBuyEligible && (
+                    <Badge variant="secondary" className="text-xs">
+                      <Users className="h-3 w-3 mr-1" />
+                      Group Buy
+                    </Badge>
+                  )}
+                  {product.isFreeShippingEligible && (
+                    <Badge className="bg-secondary text-secondary-foreground text-xs">
+                      <Truck className="h-3 w-3 mr-1" />
+                      Free Shipping
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-xl font-bold text-primary">
+                  {formatPrice(product.basePrice)}
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <Star className="h-4 w-4 fill-accent-foreground text-accent-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      {product.rating} ({product.reviewCount})
+                    </span>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={handleWishlistClick}
+                    >
+                      <Heart className={`h-4 w-4 ${inWishlist ? 'fill-destructive text-destructive' : 'text-muted-foreground'}`} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={handleCompareClick}
+                    >
+                      <GitCompare className={`h-4 w-4 ${inCompare ? 'text-primary' : 'text-muted-foreground'}`} />
+                    </Button>
+                    {onQuickView && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={handleQuickView}
+                      >
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </div>
+        </Card>
+      </Link>
+    );
+  }
+
+  // Grid view (default)
   return (
     <Link to={`/product/${product.id}`}>
       <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 border-border bg-card">
