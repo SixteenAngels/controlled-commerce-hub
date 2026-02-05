@@ -381,10 +381,15 @@ export default function Checkout() {
         amount: Math.round(total * 100), // Paystack expects amount in pesewas for GHS
         currency: 'GHS', // Always use GHS for Paystack
         ref: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        callback: async (response: { reference: string }) => {
-          await createOrder(response.reference);
+        callback: function(response: { reference: string }) {
+          // Use non-async wrapper to satisfy Paystack's callback requirement
+          createOrder(response.reference).catch((err) => {
+            console.error('Order creation error:', err);
+            toast.error('Order creation failed. Please contact support.');
+            setIsProcessing(false);
+          });
         },
-        onClose: () => {
+        onClose: function() {
           setIsProcessing(false);
           toast.info('Payment cancelled');
         },
