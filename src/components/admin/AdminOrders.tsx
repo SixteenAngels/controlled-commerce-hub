@@ -35,8 +35,9 @@ export function AdminOrders() {
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ['admin-orders'],
-    queryFn: async () => {
-      const { data, error } = await supabase
+    queryFn: async (): Promise<any[]> => {
+      // Fetch orders first
+      const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select(`
           *,
@@ -56,13 +57,34 @@ export function AdminOrders() {
             longitude,
             notes,
             created_at
-          ),
-          profiles!orders_user_id_fkey(name, email)
+          )
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data;
+      if (ordersError) throw ordersError;
+
+      // Fetch profiles for all unique user_ids
+      const userIds = [...new Set(ordersData?.map(o => o.user_id) || [])];
+      
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, name, email')
+          .in('user_id', userIds);
+
+        // Create a map for quick lookup
+        const profilesMap = new Map(
+          profilesData?.map(p => [p.user_id, p]) || []
+        );
+
+        // Attach profiles to orders
+        return ordersData?.map(order => ({
+          ...order,
+          profiles: profilesMap.get(order.user_id) || null
+        })) || [];
+      }
+
+      return ordersData || [];
     },
   });
 
