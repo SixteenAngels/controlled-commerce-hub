@@ -23,6 +23,7 @@ import TrackOrder from "./pages/TrackOrder";
 import Profile from "./pages/Profile";
 import Wishlist from "./pages/Wishlist";
 import Compare from "./pages/Compare";
+import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/wishlist" element={<Wishlist />} />
                 <Route path="/compare" element={<Compare />} />
+                <Route path="/help" element={<Help />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
