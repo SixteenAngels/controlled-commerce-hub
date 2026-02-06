@@ -3,7 +3,7 @@ import { Plane, Ship, Package } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="bg-card border-t border-border mt-16">
+    <footer className="bg-card border-t border-border mt-16 hidden md:block">
       <div className="container py-12">
         {/* Shipping Info Banner */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 pb-8 border-b border-border">

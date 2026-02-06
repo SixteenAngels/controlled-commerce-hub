@@ -7,6 +7,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CompareProvider } from "@/contexts/CompareContext";
 import { CompareBar } from "@/components/compare/CompareBar";
+import { MobileNavBar } from "@/components/layout/MobileNavBar";
 import Index from "./pages/Index";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
@@ -56,6 +57,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <CompareBar />
+              <MobileNavBar />
             </BrowserRouter>
           </CompareProvider>
         </CartProvider>
