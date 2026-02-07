@@ -6,6 +6,7 @@ import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface ShippingAddress {
   full_name: string;
@@ -27,6 +28,7 @@ interface Order {
 
 export default function OrderConfirmation() {
   const { orderId } = useParams();
+  const { formatPrice } = useCurrency();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -103,7 +105,7 @@ export default function OrderConfirmation() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-muted-foreground">Total Amount</p>
-                  <p className="font-semibold text-primary text-lg">₦{order.total_amount.toLocaleString()}</p>
+                  <p className="font-semibold text-primary text-lg">{formatPrice(order.total_amount)}</p>
                 </div>
               </div>
 

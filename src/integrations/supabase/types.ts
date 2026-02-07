@@ -212,6 +212,77 @@ export type Database = {
           },
         ]
       }
+      chat_support_conversations: {
+        Row: {
+          assigned_admin_id: string | null
+          closed_at: string | null
+          created_at: string
+          id: string
+          status: string
+          subject: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_admin_id?: string | null
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          subject?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_admin_id?: string | null
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          subject?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      chat_support_messages: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          is_from_admin: boolean
+          is_read: boolean
+          message: string
+          sender_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_from_admin?: boolean
+          is_read?: boolean
+          message: string
+          sender_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_from_admin?: boolean
+          is_read?: boolean
+          message?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_support_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_support_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comparison_history: {
         Row: {
           compared_at: string

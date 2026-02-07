@@ -1,5 +1,6 @@
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import { LiveChatWidget } from '@/components/support/LiveChatWidget';
 import { 
   Accordion, 
   AccordionContent, 
@@ -295,6 +296,7 @@ export default function Help() {
         </Card>
       </main>
       
+      <LiveChatWidget />
       <Footer />
     </div>
   );

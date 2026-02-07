@@ -194,27 +194,34 @@ export default function MyOrders() {
                       {/* Order Items Preview */}
                       <div className="p-4">
                         <div className="space-y-3 mb-4">
-                          {order.order_items.slice(0, 2).map((item) => (
-                            <div key={item.id} className="flex items-center gap-3">
-                              <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
-                                <Package className="h-6 w-6 text-muted-foreground" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-foreground line-clamp-1">{item.product_name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {item.variant_details} × {item.quantity}
+                          {order.order_items.map((item) => (
+                            <div key={item.id} className="p-3 bg-muted/50 rounded-lg border border-border">
+                              <div className="flex items-start gap-3">
+                                <div className="w-12 h-12 bg-background rounded-lg flex items-center justify-center border border-border">
+                                  <Package className="h-6 w-6 text-muted-foreground" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-foreground">{item.product_name}</p>
+                                  {item.variant_details && (
+                                    <p className="text-sm text-primary font-medium mt-1">
+                                      {item.variant_details}
+                                    </p>
+                                  )}
+                                  <div className="flex items-center gap-4 mt-2 text-sm">
+                                    <span className="text-muted-foreground">
+                                      Qty: <strong className="text-foreground">{item.quantity}</strong>
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                      Unit: <strong className="text-foreground">{formatPrice(item.unit_price)}</strong>
+                                    </span>
+                                  </div>
+                                </div>
+                                <p className="font-bold text-primary">
+                                  {formatPrice(item.total_price)}
                                 </p>
                               </div>
-                              <p className="font-medium text-foreground">
-                                {formatPrice(item.total_price)}
-                              </p>
                             </div>
                           ))}
-                          {order.order_items.length > 2 && (
-                            <p className="text-sm text-muted-foreground">
-                              +{order.order_items.length - 2} more items
-                            </p>
-                          )}
                         </div>
 
                         {/* Delivery Info & Actions */}
