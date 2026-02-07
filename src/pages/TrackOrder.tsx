@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCurrency } from '@/hooks/useCurrency';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { OrderTrackingMap } from '@/components/order/OrderTrackingMap';
@@ -17,6 +18,7 @@ import { format } from 'date-fns';
 export default function TrackOrder() {
   const { orderId } = useParams<{ orderId: string }>();
   const { user } = useAuth();
+  const { formatPrice } = useCurrency();
   const [searchOrderNumber, setSearchOrderNumber] = useState('');
   const [searchedOrderId, setSearchedOrderId] = useState<string | null>(orderId || null);
 
@@ -160,7 +162,7 @@ export default function TrackOrder() {
                   </div>
                   <div>
                     <p className="text-muted-foreground">Total Amount</p>
-                    <p className="font-medium">${Number(order.total_amount).toFixed(2)}</p>
+                    <p className="font-medium">{formatPrice(Number(order.total_amount))}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Shipping Method</p>
@@ -197,26 +199,26 @@ export default function TrackOrder() {
                       <div>
                         <p className="font-medium">{item.product_name}</p>
                         {item.variant_details && (
-                          <p className="text-sm text-muted-foreground">{item.variant_details}</p>
+                          <p className="text-sm text-primary font-medium">{item.variant_details}</p>
                         )}
                         <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
                       </div>
-                      <p className="font-medium">${Number(item.total_price).toFixed(2)}</p>
+                      <p className="font-medium">{formatPrice(Number(item.total_price))}</p>
                     </div>
                   ))}
                   <Separator />
                   <div className="flex justify-between items-center">
                     <p className="text-muted-foreground">Subtotal</p>
-                    <p>${Number(order.subtotal).toFixed(2)}</p>
+                    <p>{formatPrice(Number(order.subtotal))}</p>
                   </div>
                   <div className="flex justify-between items-center">
                     <p className="text-muted-foreground">Shipping</p>
-                    <p>${Number(order.shipping_price || 0).toFixed(2)}</p>
+                    <p>{formatPrice(Number(order.shipping_price || 0))}</p>
                   </div>
                   <Separator />
                   <div className="flex justify-between items-center font-semibold">
                     <p>Total</p>
-                    <p>${Number(order.total_amount).toFixed(2)}</p>
+                    <p className="text-primary">{formatPrice(Number(order.total_amount))}</p>
                   </div>
                 </div>
               </CardContent>
