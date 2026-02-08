@@ -60,12 +60,19 @@ interface Order {
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
   pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
+  payment_received: { label: 'Payment Received', color: 'bg-green-100 text-green-800', icon: CheckCircle },
+  order_placed: { label: 'Order Placed', color: 'bg-blue-100 text-blue-800', icon: Package },
   confirmed: { label: 'Confirmed', color: 'bg-blue-100 text-blue-800', icon: CheckCircle },
   processing: { label: 'Processing', color: 'bg-purple-100 text-purple-800', icon: Loader },
+  packed_for_delivery: { label: 'Packed for Delivery', color: 'bg-purple-100 text-purple-800', icon: Package },
   shipped: { label: 'Shipped', color: 'bg-indigo-100 text-indigo-800', icon: Truck },
   in_transit: { label: 'In Transit', color: 'bg-cyan-100 text-cyan-800', icon: Truck },
+  in_ghana: { label: 'In Ghana', color: 'bg-orange-100 text-orange-800', icon: MapPin },
+  ready_for_delivery: { label: 'Ready for Delivery', color: 'bg-teal-100 text-teal-800', icon: Package },
+  out_for_delivery: { label: 'Out for Delivery', color: 'bg-cyan-100 text-cyan-800', icon: Truck },
   delivered: { label: 'Delivered', color: 'bg-green-100 text-green-800', icon: CheckCircle },
   cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: XCircle },
+  refunded: { label: 'Refunded', color: 'bg-red-100 text-red-800', icon: XCircle },
 };
 
 export default function MyOrders() {

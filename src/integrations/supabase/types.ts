@@ -1218,6 +1218,21 @@ export type Database = {
       group_buy_status: "open" | "filled" | "closed" | "cancelled"
       order_status:
         | "pending"
+        | "payment_received"
+        | "order_placed"
+        | "confirmed"
+        | "processing"
+        | "packed_for_delivery"
+        | "shipped"
+        | "in_transit"
+        | "in_ghana"
+        | "ready_for_delivery"
+        | "out_for_delivery"
+        | "delivered"
+        | "cancelled"
+        | "refunded"
+      order_status_old:
+        | "pending"
         | "confirmed"
         | "processing"
         | "shipped"
@@ -1357,6 +1372,22 @@ export const Constants = {
       coupon_type: ["percentage", "fixed_amount"],
       group_buy_status: ["open", "filled", "closed", "cancelled"],
       order_status: [
+        "pending",
+        "payment_received",
+        "order_placed",
+        "confirmed",
+        "processing",
+        "packed_for_delivery",
+        "shipped",
+        "in_transit",
+        "in_ghana",
+        "ready_for_delivery",
+        "out_for_delivery",
+        "delivered",
+        "cancelled",
+        "refunded",
+      ],
+      order_status_old: [
         "pending",
         "confirmed",
         "processing",
