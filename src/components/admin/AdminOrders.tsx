@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Loader2, Eye, MapPin, Package } from 'lucide-react';
+import { Loader2, Eye, MapPin, Package, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCurrency } from '@/hooks/useCurrency';
 
@@ -32,11 +32,11 @@ export function AdminOrders() {
   const { formatPrice } = useCurrency();
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [trackingLocation, setTrackingLocation] = useState({ lat: '', lng: '', location: '', notes: '' });
+  const [deliveryDates, setDeliveryDates] = useState<{ orderId: string; start: string; end: string }>({ orderId: '', start: '', end: '' });
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ['admin-orders'],
     queryFn: async (): Promise<any[]> => {
-      // Fetch orders first
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select(`
@@ -63,7 +63,6 @@ export function AdminOrders() {
 
       if (ordersError) throw ordersError;
 
-      // Fetch profiles for all unique user_ids
       const userIds = [...new Set(ordersData?.map(o => o.user_id) || [])];
       
       if (userIds.length > 0) {
@@ -72,12 +71,10 @@ export function AdminOrders() {
           .select('user_id, name, email')
           .in('user_id', userIds);
 
-        // Create a map for quick lookup
         const profilesMap = new Map(
           profilesData?.map(p => [p.user_id, p]) || []
         );
 
-        // Attach profiles to orders
         return ordersData?.map(order => ({
           ...order,
           profiles: profilesMap.get(order.user_id) || null
@@ -92,9 +89,13 @@ export function AdminOrders() {
     mutationFn: async ({ orderId, status, userId, orderNumber }: { orderId: string; status: OrderStatus; userId?: string; orderNumber?: string }) => {
       const { error } = await supabase
         .from('orders')
-        .update({ status })
+        .update({ status, updated_at: new Date().toISOString() })
         .eq('id', orderId);
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
 
       const statusMessages: Record<OrderStatus, string> = {
         pending: 'Your order is pending confirmation.',
@@ -108,7 +109,6 @@ export function AdminOrders() {
         refunded: 'Your order has been refunded.',
       };
 
-      // Create in-app notification for order status change
       if (userId) {
         await supabase.from('notifications').insert({
           user_id: userId,
@@ -118,7 +118,6 @@ export function AdminOrders() {
           data: { orderId, status },
         });
 
-        // Send push notification
         try {
           await supabase.functions.invoke('send-push-notification', {
             body: {
@@ -130,7 +129,6 @@ export function AdminOrders() {
           });
         } catch (pushError) {
           console.log('Push notification not sent:', pushError);
-          // Don't fail the mutation if push fails
         }
       }
     },
@@ -139,7 +137,58 @@ export function AdminOrders() {
       toast.success('Order status updated and customer notified');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      console.error('Mutation error:', error);
+      toast.error(`Failed to update: ${error.message}`);
+    },
+  });
+
+  const updateDeliveryDatesMutation = useMutation({
+    mutationFn: async ({ orderId, startDate, endDate, userId, orderNumber }: { orderId: string; startDate: string; endDate: string; userId?: string; orderNumber?: string }) => {
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          estimated_delivery_start: startDate,
+          estimated_delivery_end: endDate,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+      
+      if (error) {
+        console.error('Update delivery dates error:', error);
+        throw error;
+      }
+
+      // Notify customer about estimated delivery
+      if (userId) {
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          title: 'Estimated Delivery Updated',
+          message: `Your order #${orderNumber} is estimated to arrive between ${format(new Date(startDate), 'PP')} and ${format(new Date(endDate), 'PP')}.`,
+          type: 'order_status',
+          data: { orderId, startDate, endDate },
+        });
+
+        try {
+          await supabase.functions.invoke('send-push-notification', {
+            body: {
+              user_id: userId,
+              title: `Order ${orderNumber || ''} Delivery Update`,
+              body: `Estimated arrival: ${format(new Date(startDate), 'PP')} - ${format(new Date(endDate), 'PP')}`,
+              data: { orderId, type: 'delivery_update' },
+            },
+          });
+        } catch (pushError) {
+          console.log('Push notification not sent:', pushError);
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      toast.success('Estimated delivery dates updated');
+      setDeliveryDates({ orderId: '', start: '', end: '' });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update: ${error.message}`);
     },
   });
 
@@ -208,7 +257,7 @@ export function AdminOrders() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Customer</p>
                   <p className="font-medium text-foreground">
@@ -229,6 +278,16 @@ export function AdminOrders() {
                   <p className="font-bold text-primary text-xl">
                     {formatPrice(Number(order.total_amount))}
                   </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Est. Delivery</p>
+                  {order.estimated_delivery_start && order.estimated_delivery_end ? (
+                    <p className="font-medium text-foreground text-sm">
+                      {format(new Date(order.estimated_delivery_start), 'PP')} - {format(new Date(order.estimated_delivery_end), 'PP')}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">Not set</p>
+                  )}
                 </div>
               </div>
 
@@ -286,6 +345,7 @@ export function AdminOrders() {
                     userId: order.user_id,
                     orderNumber: order.order_number 
                   })}
+                  disabled={updateStatusMutation.isPending}
                 >
                   <SelectTrigger className="w-48">
                     <SelectValue placeholder="Update status" />
@@ -298,6 +358,63 @@ export function AdminOrders() {
                     ))}
                   </SelectContent>
                 </Select>
+
+                {/* Set Estimated Delivery Dialog */}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setDeliveryDates({
+                        orderId: order.id,
+                        start: order.estimated_delivery_start || '',
+                        end: order.estimated_delivery_end || ''
+                      })}
+                    >
+                      <Calendar className="h-4 w-4 mr-1" />
+                      Set Delivery
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-background">
+                    <DialogHeader>
+                      <DialogTitle>Set Estimated Delivery for #{order.order_number}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Estimated Delivery Start</Label>
+                        <Input
+                          type="date"
+                          value={deliveryDates.orderId === order.id ? deliveryDates.start : order.estimated_delivery_start || ''}
+                          onChange={(e) => setDeliveryDates(prev => ({ ...prev, orderId: order.id, start: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Estimated Delivery End</Label>
+                        <Input
+                          type="date"
+                          value={deliveryDates.orderId === order.id ? deliveryDates.end : order.estimated_delivery_end || ''}
+                          onChange={(e) => setDeliveryDates(prev => ({ ...prev, orderId: order.id, end: e.target.value }))}
+                        />
+                      </div>
+                      <Button
+                        onClick={() => updateDeliveryDatesMutation.mutate({
+                          orderId: order.id,
+                          startDate: deliveryDates.start,
+                          endDate: deliveryDates.end,
+                          userId: order.user_id,
+                          orderNumber: order.order_number
+                        })}
+                        disabled={!deliveryDates.start || !deliveryDates.end || updateDeliveryDatesMutation.isPending}
+                        className="w-full"
+                      >
+                        {updateDeliveryDatesMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : null}
+                        Save Delivery Dates
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
 
                 <Dialog>
                   <DialogTrigger asChild>
