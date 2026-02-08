@@ -8,17 +8,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { Loader2, Eye, MapPin, Package, Calendar } from 'lucide-react';
+import { Loader2, Eye, MapPin, Package, Calendar, Clock, CreditCard, ShoppingBag, PackageCheck, Truck, Plane, MapPinned, Home, CheckCircle, XCircle, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCurrency } from '@/hooks/useCurrency';
 
 const ORDER_STATUSES = [
   'pending',
+  'payment_received',
+  'order_placed',
   'confirmed',
   'processing',
+  'packed_for_delivery',
   'shipped',
   'in_transit',
+  'in_ghana',
+  'ready_for_delivery',
   'out_for_delivery',
   'delivered',
   'cancelled',
@@ -27,10 +34,48 @@ const ORDER_STATUSES = [
 
 type OrderStatus = typeof ORDER_STATUSES[number];
 
+interface StatusTabConfig {
+  value: string;
+  label: string;
+  icon: any;
+  statuses: OrderStatus[];
+}
+
+const STATUS_TABS: StatusTabConfig[] = [
+  { value: 'all', label: 'All Orders', icon: Package, statuses: ORDER_STATUSES as unknown as OrderStatus[] },
+  { value: 'pending', label: 'Pending', icon: Clock, statuses: ['pending'] },
+  { value: 'payment_received', label: 'Payment Received', icon: CreditCard, statuses: ['payment_received'] },
+  { value: 'order_placed', label: 'Order Placed', icon: ShoppingBag, statuses: ['order_placed'] },
+  { value: 'packed_for_delivery', label: 'Packed', icon: PackageCheck, statuses: ['packed_for_delivery'] },
+  { value: 'in_transit', label: 'In Transit', icon: Truck, statuses: ['in_transit'] },
+  { value: 'in_ghana', label: 'In Ghana', icon: Plane, statuses: ['in_ghana'] },
+  { value: 'ready_for_delivery', label: 'Ready for Delivery', icon: MapPinned, statuses: ['ready_for_delivery'] },
+  { value: 'delivered', label: 'Delivered', icon: CheckCircle, statuses: ['delivered'] },
+  { value: 'cancelled', label: 'Cancelled/Refunded', icon: XCircle, statuses: ['cancelled', 'refunded'] },
+];
+
+const STATUS_LABELS: Record<OrderStatus, string> = {
+  pending: 'Pending',
+  payment_received: 'Payment Received',
+  order_placed: 'Order Placed',
+  confirmed: 'Confirmed',
+  processing: 'Processing',
+  packed_for_delivery: 'Packed for Delivery',
+  shipped: 'Shipped',
+  in_transit: 'In Transit',
+  in_ghana: 'In Ghana',
+  ready_for_delivery: 'Ready for Delivery',
+  out_for_delivery: 'Out for Delivery',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+  refunded: 'Refunded',
+};
+
 export function AdminOrders() {
   const queryClient = useQueryClient();
   const { formatPrice } = useCurrency();
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('all');
   const [trackingLocation, setTrackingLocation] = useState({ lat: '', lng: '', location: '', notes: '' });
   const [deliveryDates, setDeliveryDates] = useState<{ orderId: string; start: string; end: string }>({ orderId: '', start: '', end: '' });
 
@@ -85,6 +130,18 @@ export function AdminOrders() {
     },
   });
 
+  const filteredOrders = orders?.filter(order => {
+    if (activeTab === 'all') return true;
+    const tabConfig = STATUS_TABS.find(t => t.value === activeTab);
+    return tabConfig?.statuses.includes(order.status as OrderStatus);
+  }) || [];
+
+  const getOrderCountForTab = (tabValue: string) => {
+    if (tabValue === 'all') return orders?.length || 0;
+    const tabConfig = STATUS_TABS.find(t => t.value === tabValue);
+    return orders?.filter(o => tabConfig?.statuses.includes(o.status as OrderStatus)).length || 0;
+  };
+
   const updateStatusMutation = useMutation({
     mutationFn: async ({ orderId, status, userId, orderNumber }: { orderId: string; status: OrderStatus; userId?: string; orderNumber?: string }) => {
       const { error } = await supabase
@@ -99,10 +156,15 @@ export function AdminOrders() {
 
       const statusMessages: Record<OrderStatus, string> = {
         pending: 'Your order is pending confirmation.',
+        payment_received: 'Payment received! Processing your order.',
+        order_placed: 'Your order has been placed successfully!',
         confirmed: 'Your order has been confirmed!',
         processing: 'Your order is being processed.',
+        packed_for_delivery: 'Your order has been packed and ready for shipping!',
         shipped: 'Your order has been shipped!',
         in_transit: 'Your order is in transit.',
+        in_ghana: 'Your order has arrived in Ghana!',
+        ready_for_delivery: 'Your order is ready for delivery!',
         out_for_delivery: 'Your order is out for delivery!',
         delivered: 'Your order has been delivered!',
         cancelled: 'Your order has been cancelled.',
@@ -112,7 +174,7 @@ export function AdminOrders() {
       if (userId) {
         await supabase.from('notifications').insert({
           user_id: userId,
-          title: `Order Status: ${status.replace('_', ' ')}`,
+          title: `Order Status: ${STATUS_LABELS[status]}`,
           message: statusMessages[status],
           type: 'order_status',
           data: { orderId, status },
@@ -158,7 +220,6 @@ export function AdminOrders() {
         throw error;
       }
 
-      // Notify customer about estimated delivery
       if (userId) {
         await supabase.from('notifications').insert({
           user_id: userId,
@@ -219,10 +280,15 @@ export function AdminOrders() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-muted text-muted-foreground';
+      case 'payment_received': return 'bg-green-100 text-green-800';
+      case 'order_placed': return 'bg-blue-100 text-blue-800';
       case 'confirmed': return 'bg-primary/20 text-primary';
       case 'processing': return 'bg-accent text-accent-foreground';
+      case 'packed_for_delivery': return 'bg-purple-100 text-purple-800';
       case 'shipped': return 'bg-primary/30 text-primary';
       case 'in_transit': return 'bg-primary/40 text-primary';
+      case 'in_ghana': return 'bg-orange-100 text-orange-800';
+      case 'ready_for_delivery': return 'bg-cyan-100 text-cyan-800';
       case 'out_for_delivery': return 'bg-primary/50 text-primary-foreground';
       case 'delivered': return 'bg-primary text-primary-foreground';
       case 'cancelled': return 'bg-destructive/20 text-destructive';
@@ -241,306 +307,335 @@ export function AdminOrders() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold font-serif text-foreground mb-8">Orders Management</h1>
+      <h1 className="text-3xl font-bold font-serif text-foreground mb-6">Orders Management</h1>
 
-      <div className="space-y-4">
-        {orders?.map((order) => (
-          <Card key={order.id}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-medium">
-                  Order #{order.order_number}
-                </CardTitle>
-                <Badge className={getStatusColor(order.status || 'pending')}>
-                  {order.status?.replace('_', ' ')}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Customer</p>
-                  <p className="font-medium text-foreground">
-                    {(order.profiles as any)?.name || 'Unknown'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {(order.profiles as any)?.email}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Order Date</p>
-                  <p className="font-medium text-foreground">
-                    {format(new Date(order.created_at), 'PPp')}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total</p>
-                  <p className="font-bold text-primary text-xl">
-                    {formatPrice(Number(order.total_amount))}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Est. Delivery</p>
-                  {order.estimated_delivery_start && order.estimated_delivery_end ? (
-                    <p className="font-medium text-foreground text-sm">
-                      {format(new Date(order.estimated_delivery_start), 'PP')} - {format(new Date(order.estimated_delivery_end), 'PP')}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">Not set</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Order Items with Full Details */}
-              <div className="mb-4 p-4 bg-muted rounded-lg">
-                <p className="text-sm font-semibold text-foreground mb-3">Order Items:</p>
-                <div className="space-y-3">
-                  {order.order_items?.map((item: any) => (
-                    <div key={item.id} className="flex justify-between items-start p-3 bg-background rounded-lg border border-border">
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">{item.product_name}</p>
-                        {item.variant_details && (
-                          <p className="text-sm text-primary mt-1">
-                            Variant: {item.variant_details}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                          <span>Qty: <strong className="text-foreground">{item.quantity}</strong></span>
-                          <span>Unit Price: <strong className="text-foreground">{formatPrice(Number(item.unit_price))}</strong></span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-primary">{formatPrice(Number(item.total_price))}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                {/* Order Summary */}
-                <div className="mt-4 pt-3 border-t border-border">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span className="font-medium">{formatPrice(Number(order.subtotal))}</span>
-                  </div>
-                  {order.shipping_price && (
-                    <div className="flex justify-between text-sm mt-1">
-                      <span className="text-muted-foreground">Shipping</span>
-                      <span className="font-medium">{formatPrice(Number(order.shipping_price))}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-lg font-bold mt-2 pt-2 border-t border-border">
-                    <span>Total</span>
-                    <span className="text-primary">{formatPrice(Number(order.total_amount))}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex flex-wrap gap-2">
-                <Select
-                  value={order.status || 'pending'}
-                  onValueChange={(value) => updateStatusMutation.mutate({ 
-                    orderId: order.id, 
-                    status: value as OrderStatus,
-                    userId: order.user_id,
-                    orderNumber: order.order_number 
-                  })}
-                  disabled={updateStatusMutation.isPending}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <ScrollArea className="w-full whitespace-nowrap mb-6">
+          <TabsList className="inline-flex h-auto p-1 gap-1">
+            {STATUS_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const count = getOrderCountForTab(tab.value);
+              return (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="flex items-center gap-2 px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                 >
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Update status" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover z-50">
-                    {ORDER_STATUSES.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {status.replace('_', ' ')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <Icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                    {count}
+                  </Badge>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
-                {/* Set Estimated Delivery Dialog */}
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setDeliveryDates({
-                        orderId: order.id,
-                        start: order.estimated_delivery_start || '',
-                        end: order.estimated_delivery_end || ''
-                      })}
-                    >
-                      <Calendar className="h-4 w-4 mr-1" />
-                      Set Delivery
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-background">
-                    <DialogHeader>
-                      <DialogTitle>Set Estimated Delivery for #{order.order_number}</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Estimated Delivery Start</Label>
-                        <Input
-                          type="date"
-                          value={deliveryDates.orderId === order.id ? deliveryDates.start : order.estimated_delivery_start || ''}
-                          onChange={(e) => setDeliveryDates(prev => ({ ...prev, orderId: order.id, start: e.target.value }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Estimated Delivery End</Label>
-                        <Input
-                          type="date"
-                          value={deliveryDates.orderId === order.id ? deliveryDates.end : order.estimated_delivery_end || ''}
-                          onChange={(e) => setDeliveryDates(prev => ({ ...prev, orderId: order.id, end: e.target.value }))}
-                        />
-                      </div>
-                      <Button
-                        onClick={() => updateDeliveryDatesMutation.mutate({
-                          orderId: order.id,
-                          startDate: deliveryDates.start,
-                          endDate: deliveryDates.end,
-                          userId: order.user_id,
-                          orderNumber: order.order_number
-                        })}
-                        disabled={!deliveryDates.start || !deliveryDates.end || updateDeliveryDatesMutation.isPending}
-                        className="w-full"
-                      >
-                        {updateDeliveryDatesMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : null}
-                        Save Delivery Dates
-                      </Button>
+        <TabsContent value={activeTab} className="mt-0">
+          <div className="space-y-4">
+            {filteredOrders.length === 0 ? (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">
+                    No orders in {activeTab === 'all' ? 'any category' : STATUS_TABS.find(t => t.value === activeTab)?.label}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredOrders.map((order) => (
+                <Card key={order.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg font-medium">
+                        Order #{order.order_number}
+                      </CardTitle>
+                      <Badge className={getStatusColor(order.status || 'pending')}>
+                        {STATUS_LABELS[order.status as OrderStatus] || order.status?.replace('_', ' ')}
+                      </Badge>
                     </div>
-                  </DialogContent>
-                </Dialog>
-
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
-                      <Eye className="h-4 w-4 mr-1" />
-                      View Details
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl bg-background">
-                    <DialogHeader>
-                      <DialogTitle>Order #{order.order_number}</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                       <div>
-                        <h4 className="font-semibold mb-2">Shipping Address</h4>
-                        {order.shipping_address ? (
-                          <div className="text-sm text-muted-foreground p-3 bg-muted rounded-lg">
-                            <p className="font-medium text-foreground">{(order.shipping_address as any)?.full_name}</p>
-                            <p>{(order.shipping_address as any)?.address_line1}</p>
-                            {(order.shipping_address as any)?.address_line2 && <p>{(order.shipping_address as any)?.address_line2}</p>}
-                            <p>{(order.shipping_address as any)?.city}, {(order.shipping_address as any)?.state} {(order.shipping_address as any)?.postal_code}</p>
-                            <p>{(order.shipping_address as any)?.country}</p>
-                            <p className="mt-2">Phone: {(order.shipping_address as any)?.phone}</p>
-                          </div>
+                        <p className="text-sm text-muted-foreground">Customer</p>
+                        <p className="font-medium text-foreground">
+                          {(order.profiles as any)?.name || 'Unknown'}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {(order.profiles as any)?.email}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Order Date</p>
+                        <p className="font-medium text-foreground">
+                          {format(new Date(order.created_at), 'PPp')}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total</p>
+                        <p className="font-bold text-primary text-xl">
+                          {formatPrice(Number(order.total_amount))}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Est. Delivery</p>
+                        {order.estimated_delivery_start && order.estimated_delivery_end ? (
+                          <p className="font-medium text-foreground text-sm">
+                            {format(new Date(order.estimated_delivery_start), 'PP')} - {format(new Date(order.estimated_delivery_end), 'PP')}
+                          </p>
                         ) : (
-                          <p className="text-sm text-muted-foreground">No address provided</p>
+                          <p className="text-sm text-muted-foreground italic">Not set</p>
                         )}
                       </div>
-                      <div>
-                        <h4 className="font-semibold mb-2">Tracking History</h4>
-                        <div className="space-y-2">
-                          {order.order_tracking?.length > 0 ? (
-                            order.order_tracking?.map((track: any) => (
-                              <div key={track.id} className="p-2 bg-muted rounded text-sm">
-                                <p className="font-medium">{track.status}</p>
-                                <p className="text-muted-foreground">{track.location_name}</p>
-                                {track.notes && <p className="text-muted-foreground">{track.notes}</p>}
-                                <p className="text-xs text-muted-foreground">
-                                  {format(new Date(track.created_at), 'PPp')}
+                    </div>
+
+                    {/* Order Items with Full Details */}
+                    <div className="mb-4 p-4 bg-muted rounded-lg">
+                      <p className="text-sm font-semibold text-foreground mb-3">Order Items:</p>
+                      <div className="space-y-3">
+                        {order.order_items?.map((item: any) => (
+                          <div key={item.id} className="flex justify-between items-start p-3 bg-background rounded-lg border border-border">
+                            <div className="flex-1">
+                              <p className="font-medium text-foreground">{item.product_name}</p>
+                              {item.variant_details && (
+                                <p className="text-sm text-primary mt-1">
+                                  Variant: {item.variant_details}
                                 </p>
+                              )}
+                              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                                <span>Qty: <strong className="text-foreground">{item.quantity}</strong></span>
+                                <span>Unit Price: <strong className="text-foreground">{formatPrice(Number(item.unit_price))}</strong></span>
                               </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-muted-foreground">No tracking updates yet</p>
-                          )}
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-primary">{formatPrice(Number(item.total_price))}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Order Summary */}
+                      <div className="mt-4 pt-3 border-t border-border">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Subtotal</span>
+                          <span className="font-medium">{formatPrice(Number(order.subtotal))}</span>
+                        </div>
+                        {order.shipping_price && (
+                          <div className="flex justify-between text-sm mt-1">
+                            <span className="text-muted-foreground">Shipping</span>
+                            <span className="font-medium">{formatPrice(Number(order.shipping_price))}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-lg font-bold mt-2 pt-2 border-t border-border">
+                          <span>Total</span>
+                          <span className="text-primary">{formatPrice(Number(order.total_amount))}</span>
                         </div>
                       </div>
                     </div>
-                  </DialogContent>
-                </Dialog>
 
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      Add Tracking
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-background">
-                    <DialogHeader>
-                      <DialogTitle>Add Tracking Update</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Location Name</Label>
-                        <Input
-                          value={trackingLocation.location}
-                          onChange={(e) => setTrackingLocation(prev => ({ ...prev, location: e.target.value }))}
-                          placeholder="e.g., Arrived at warehouse"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-2">
-                          <Label>Latitude (optional)</Label>
-                          <Input
-                            type="number"
-                            value={trackingLocation.lat}
-                            onChange={(e) => setTrackingLocation(prev => ({ ...prev, lat: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Longitude (optional)</Label>
-                          <Input
-                            type="number"
-                            value={trackingLocation.lng}
-                            onChange={(e) => setTrackingLocation(prev => ({ ...prev, lng: e.target.value }))}
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Notes (optional)</Label>
-                        <Input
-                          value={trackingLocation.notes}
-                          onChange={(e) => setTrackingLocation(prev => ({ ...prev, notes: e.target.value }))}
-                        />
-                      </div>
-                      <Button
-                        onClick={() => addTrackingMutation.mutate({
-                          orderId: order.id,
-                          status: order.status || 'pending',
-                          location_name: trackingLocation.location,
-                          latitude: trackingLocation.lat ? parseFloat(trackingLocation.lat) : undefined,
-                          longitude: trackingLocation.lng ? parseFloat(trackingLocation.lng) : undefined,
-                          notes: trackingLocation.notes || undefined,
+                    {/* Actions */}
+                    <div className="flex flex-wrap gap-2">
+                      <Select
+                        value={order.status || 'pending'}
+                        onValueChange={(value) => updateStatusMutation.mutate({ 
+                          orderId: order.id, 
+                          status: value as OrderStatus,
+                          userId: order.user_id,
+                          orderNumber: order.order_number 
                         })}
-                        disabled={!trackingLocation.location}
+                        disabled={updateStatusMutation.isPending}
                       >
-                        Add Tracking
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                        <SelectTrigger className="w-52">
+                          <SelectValue placeholder="Update status" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover z-50">
+                          {ORDER_STATUSES.map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {STATUS_LABELS[status]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
 
-        {orders?.length === 0 && (
-          <Card>
-            <CardContent className="py-8 text-center">
-              <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No orders yet</p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+                      {/* Set Estimated Delivery Dialog */}
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setDeliveryDates({
+                              orderId: order.id,
+                              start: order.estimated_delivery_start || '',
+                              end: order.estimated_delivery_end || ''
+                            })}
+                          >
+                            <Calendar className="h-4 w-4 mr-1" />
+                            Set Delivery
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="bg-background">
+                          <DialogHeader>
+                            <DialogTitle>Set Estimated Delivery for #{order.order_number}</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>Estimated Delivery Start</Label>
+                              <Input
+                                type="date"
+                                value={deliveryDates.orderId === order.id ? deliveryDates.start : order.estimated_delivery_start || ''}
+                                onChange={(e) => setDeliveryDates(prev => ({ ...prev, orderId: order.id, start: e.target.value }))}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Estimated Delivery End</Label>
+                              <Input
+                                type="date"
+                                value={deliveryDates.orderId === order.id ? deliveryDates.end : order.estimated_delivery_end || ''}
+                                onChange={(e) => setDeliveryDates(prev => ({ ...prev, orderId: order.id, end: e.target.value }))}
+                              />
+                            </div>
+                            <Button
+                              onClick={() => updateDeliveryDatesMutation.mutate({
+                                orderId: order.id,
+                                startDate: deliveryDates.start,
+                                endDate: deliveryDates.end,
+                                userId: order.user_id,
+                                orderNumber: order.order_number
+                              })}
+                              disabled={!deliveryDates.start || !deliveryDates.end || updateDeliveryDatesMutation.isPending}
+                              className="w-full"
+                            >
+                              {updateDeliveryDatesMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              ) : null}
+                              Save Delivery Dates
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
+                            <Eye className="h-4 w-4 mr-1" />
+                            View Details
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl bg-background">
+                          <DialogHeader>
+                            <DialogTitle>Order #{order.order_number}</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div>
+                              <h4 className="font-semibold mb-2">Shipping Address</h4>
+                              {order.shipping_address ? (
+                                <div className="text-sm text-muted-foreground p-3 bg-muted rounded-lg">
+                                  <p className="font-medium text-foreground">{(order.shipping_address as any)?.full_name}</p>
+                                  <p>{(order.shipping_address as any)?.address_line1}</p>
+                                  {(order.shipping_address as any)?.address_line2 && <p>{(order.shipping_address as any)?.address_line2}</p>}
+                                  <p>{(order.shipping_address as any)?.city}, {(order.shipping_address as any)?.state} {(order.shipping_address as any)?.postal_code}</p>
+                                  <p>{(order.shipping_address as any)?.country}</p>
+                                  <p className="mt-2">Phone: {(order.shipping_address as any)?.phone}</p>
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground">No address provided</p>
+                              )}
+                            </div>
+                            <div>
+                              <h4 className="font-semibold mb-2">Tracking History</h4>
+                              <div className="space-y-2">
+                                {order.order_tracking?.length > 0 ? (
+                                  order.order_tracking?.map((track: any) => (
+                                    <div key={track.id} className="p-2 bg-muted rounded text-sm">
+                                      <p className="font-medium">{track.status}</p>
+                                      <p className="text-muted-foreground">{track.location_name}</p>
+                                      {track.notes && <p className="text-muted-foreground">{track.notes}</p>}
+                                      <p className="text-xs text-muted-foreground">
+                                        {format(new Date(track.created_at), 'PPp')}
+                                      </p>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <p className="text-sm text-muted-foreground">No tracking updates yet</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <MapPin className="h-4 w-4 mr-1" />
+                            Add Tracking
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="bg-background">
+                          <DialogHeader>
+                            <DialogTitle>Add Tracking Update</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>Location Name</Label>
+                              <Input
+                                value={trackingLocation.location}
+                                onChange={(e) => setTrackingLocation(prev => ({ ...prev, location: e.target.value }))}
+                                placeholder="e.g., Arrived at warehouse"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-2">
+                                <Label>Latitude (optional)</Label>
+                                <Input
+                                  type="number"
+                                  value={trackingLocation.lat}
+                                  onChange={(e) => setTrackingLocation(prev => ({ ...prev, lat: e.target.value }))}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Longitude (optional)</Label>
+                                <Input
+                                  type="number"
+                                  value={trackingLocation.lng}
+                                  onChange={(e) => setTrackingLocation(prev => ({ ...prev, lng: e.target.value }))}
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Notes (optional)</Label>
+                              <Input
+                                value={trackingLocation.notes}
+                                onChange={(e) => setTrackingLocation(prev => ({ ...prev, notes: e.target.value }))}
+                              />
+                            </div>
+                            <Button
+                              onClick={() => addTrackingMutation.mutate({
+                                orderId: order.id,
+                                status: order.status || 'pending',
+                                location_name: trackingLocation.location,
+                                latitude: trackingLocation.lat ? parseFloat(trackingLocation.lat) : undefined,
+                                longitude: trackingLocation.lng ? parseFloat(trackingLocation.lng) : undefined,
+                                notes: trackingLocation.notes || undefined,
+                              })}
+                              disabled={!trackingLocation.location}
+                            >
+                              Add Tracking
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
