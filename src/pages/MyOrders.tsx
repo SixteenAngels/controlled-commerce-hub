@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, Truck, MapPin, Clock, CheckCircle, XCircle, Loader, ChevronDown, ChevronUp, Phone } from 'lucide-react';
+import { Package, Truck, MapPin, Clock, CheckCircle, XCircle, Loader, ChevronDown, ChevronUp, Phone, CreditCard, ShoppingBag, PackageCheck, Plane, MapPinned } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -57,6 +58,19 @@ interface Order {
   order_items: OrderItem[];
   order_tracking: TrackingPoint[];
 }
+
+const CUSTOMER_STATUS_TABS = [
+  { value: 'all', label: 'All Orders', icon: Package },
+  { value: 'pending', label: 'Pending', icon: Clock, statuses: ['pending'] },
+  { value: 'payment_received', label: 'Payment Received', icon: CreditCard, statuses: ['payment_received'] },
+  { value: 'order_placed', label: 'Order Placed', icon: ShoppingBag, statuses: ['order_placed', 'confirmed', 'processing'] },
+  { value: 'packed_for_delivery', label: 'Packed', icon: PackageCheck, statuses: ['packed_for_delivery', 'shipped'] },
+  { value: 'in_transit', label: 'In Transit', icon: Truck, statuses: ['in_transit'] },
+  { value: 'in_ghana', label: 'In Ghana', icon: Plane, statuses: ['in_ghana'] },
+  { value: 'ready_for_delivery', label: 'Ready', icon: MapPinned, statuses: ['ready_for_delivery', 'out_for_delivery'] },
+  { value: 'delivered', label: 'Delivered', icon: CheckCircle, statuses: ['delivered'] },
+  { value: 'cancelled', label: 'Cancelled', icon: XCircle, statuses: ['cancelled', 'refunded'] },
+];
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
   pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
@@ -124,11 +138,15 @@ export default function MyOrders() {
 
   const filteredOrders = orders.filter(order => {
     if (activeTab === 'all') return true;
-    if (activeTab === 'active') return ['pending', 'confirmed', 'processing', 'shipped', 'in_transit'].includes(order.status);
-    if (activeTab === 'completed') return order.status === 'delivered';
-    if (activeTab === 'cancelled') return order.status === 'cancelled';
-    return true;
+    const tabConfig = CUSTOMER_STATUS_TABS.find(t => t.value === activeTab);
+    return tabConfig?.statuses?.includes(order.status);
   });
+
+  const getOrderCountForTab = (tabValue: string) => {
+    if (tabValue === 'all') return orders.length;
+    const tabConfig = CUSTOMER_STATUS_TABS.find(t => t.value === tabValue);
+    return orders.filter(o => tabConfig?.statuses?.includes(o.status)).length;
+  };
 
   const getStatusBadge = (status: string) => {
     const config = statusConfig[status] || statusConfig.pending;
@@ -166,12 +184,28 @@ export default function MyOrders() {
         </h1>
 
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
-            <TabsTrigger value="all">All Orders</TabsTrigger>
-            <TabsTrigger value="active">Active</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-            <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
-          </TabsList>
+          <ScrollArea className="w-full whitespace-nowrap mb-6">
+            <TabsList className="inline-flex h-auto p-1 gap-1">
+              {CUSTOMER_STATUS_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const count = getOrderCountForTab(tab.value);
+                return (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    className="flex items-center gap-1.5 px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="hidden sm:inline">{tab.label}</span>
+                    <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                      {count}
+                    </Badge>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
 
           <TabsContent value={activeTab}>
             {filteredOrders.length === 0 ? (
