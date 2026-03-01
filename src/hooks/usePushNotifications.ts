@@ -46,7 +46,7 @@ export function usePushNotifications() {
 
     const checkSubscription = async () => {
       try {
-        const registration = await navigator.serviceWorker.ready;
+      const registration = await navigator.serviceWorker.ready as any;
         const subscription = await registration.pushManager.getSubscription();
         setIsSubscribed(!!subscription);
       } catch (error) {
@@ -91,7 +91,7 @@ export function usePushNotifications() {
       }
 
       // Register or get service worker
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await navigator.serviceWorker.ready as any;
 
       // Check for existing subscription
       let subscription = await registration.pushManager.getSubscription();
@@ -160,7 +160,7 @@ export function usePushNotifications() {
     setIsLoading(true);
 
     try {
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await navigator.serviceWorker.ready as any;
       const subscription = await registration.pushManager.getSubscription();
 
       if (subscription) {
