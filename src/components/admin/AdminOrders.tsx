@@ -530,6 +530,34 @@ export function AdminOrders() {
                       </div>
                     </div>
 
+                    {/* Admin Notes */}
+                    <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <StickyNote className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium text-foreground">Admin Notes</span>
+                      </div>
+                      <Textarea
+                        defaultValue={order.admin_notes || ''}
+                        placeholder="Add internal notes about this order..."
+                        className="text-sm min-h-[60px]"
+                        onBlur={async (e) => {
+                          const newNotes = e.target.value;
+                          if (newNotes !== (order.admin_notes || '')) {
+                            const { error } = await supabase
+                              .from('orders')
+                              .update({ admin_notes: newNotes })
+                              .eq('id', order.id);
+                            if (error) {
+                              toast.error('Failed to save note');
+                            } else {
+                              toast.success('Note saved');
+                              queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+
                     {/* Actions */}
                     <div className="flex flex-wrap gap-2">
                       <Select
