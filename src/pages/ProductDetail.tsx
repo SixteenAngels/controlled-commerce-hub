@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Star, Truck, Users, Zap, Ship, Plane, Package, ShoppingCart, ArrowLeft, Loader2 } from 'lucide-react';
+import { Star, Truck, Users, Zap, Ship, Plane, Package, ShoppingCart, ArrowLeft, Loader2, Share2, Copy, Link as LinkIcon } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useProduct, ProductWithDetails } from '@/hooks/useProducts';
@@ -17,6 +17,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
+import { RecentlyViewedProducts } from '@/components/products/RecentlyViewedProducts';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // Convert DB product to legacy Product type for cart
 function toCartProduct(product: ProductWithDetails): Product {
@@ -89,9 +97,15 @@ export default function ProductDetail() {
   const { data: product, isLoading } = useProduct(id);
   const { addToCart } = useCart();
   const { formatPrice } = useCurrency();
+  const { addProduct } = useRecentlyViewed();
 
   const [selectedVariants, setSelectedVariants] = useState<SelectedVariant[]>([]);
   const [selectedShipping, setSelectedShipping] = useState<ShippingRule | null>(null);
+
+  // Track recently viewed
+  useEffect(() => {
+    if (id) addProduct(id);
+  }, [id, addProduct]);
 
   const handleVariantToggle = (variant: { id: string; size: string | null; color: string | null; price: number; stock: number | null }) => {
     const isSelected = selectedVariants.some((v) => v.id === variant.id);
@@ -116,14 +130,11 @@ export default function ProductDetail() {
 
   const handleAddToCart = () => {
     if (!product) return;
-    
     if (selectedVariants.length === 0) {
       toast.error('Please select at least one variant');
       return;
     }
-
     const cartProduct = toCartProduct(product);
-
     selectedVariants.forEach((variant) => {
       const cartVariant: ProductVariant = {
         id: variant.id,
@@ -134,9 +145,19 @@ export default function ProductDetail() {
       };
       addToCart(cartProduct, cartVariant, variant.quantity);
     });
-
     toast.success(`Added ${selectedVariants.length} item(s) to cart`);
     setSelectedVariants([]);
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast.success('Link copied to clipboard!');
+  };
+
+  const handleShareWhatsApp = () => {
+    if (!product) return;
+    const text = `Check out ${product.name} on Ihsan! ${formatPrice(product.base_price)} - ${window.location.href}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const getShippingIcon = (typeName: string | undefined) => {
@@ -165,9 +186,7 @@ export default function ProductDetail() {
         <Header />
         <main className="container py-16 text-center">
           <h1 className="text-2xl font-bold text-foreground mb-4">Product Not Found</h1>
-          <Link to="/products">
-            <Button>Back to Products</Button>
-          </Link>
+          <Link to="/products"><Button>Back to Products</Button></Link>
         </main>
         <Footer />
       </div>
@@ -180,41 +199,54 @@ export default function ProductDetail() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container py-8">
-        {/* Breadcrumb */}
-        <Link
-          to="/products"
-          className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-6"
-        >
+        <Link to="/products" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-6">
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to Products
         </Link>
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Product Image Gallery */}
           <ProductImageGallery images={product.images} productName={product.name} />
 
-          {/* Product Info */}
           <div className="space-y-6">
-            {/* Badges */}
-            <div className="flex flex-wrap gap-2">
-              {product.is_flash_deal && (
-                <Badge className="bg-destructive text-destructive-foreground">
-                  <Zap className="h-3 w-3 mr-1" />
-                  Flash Deal
-                </Badge>
-              )}
-              {product.is_group_buy_eligible && (
-                <Badge variant="secondary" className="bg-accent text-accent-foreground">
-                  <Users className="h-3 w-3 mr-1" />
-                  Group Buy Eligible
-                </Badge>
-              )}
-              {product.is_free_shipping && (
-                <Badge className="bg-primary text-primary-foreground">
-                  <Truck className="h-3 w-3 mr-1" />
-                  Free Shipping Available
-                </Badge>
-              )}
+            {/* Badges + Share */}
+            <div className="flex items-center justify-between">
+              <div className="flex flex-wrap gap-2">
+                {product.is_flash_deal && (
+                  <Badge className="bg-destructive text-destructive-foreground">
+                    <Zap className="h-3 w-3 mr-1" />
+                    Flash Deal
+                  </Badge>
+                )}
+                {product.is_group_buy_eligible && (
+                  <Badge variant="secondary" className="bg-accent text-accent-foreground">
+                    <Users className="h-3 w-3 mr-1" />
+                    Group Buy Eligible
+                  </Badge>
+                )}
+                {product.is_free_shipping && (
+                  <Badge className="bg-primary text-primary-foreground">
+                    <Truck className="h-3 w-3 mr-1" />
+                    Free Shipping Available
+                  </Badge>
+                )}
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleCopyLink}>
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy Link
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleShareWhatsApp}>
+                    <LinkIcon className="h-4 w-4 mr-2" />
+                    Share on WhatsApp
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Start Group Buy Button */}
@@ -225,13 +257,7 @@ export default function ProductDetail() {
                     <p className="font-medium text-foreground">Start a Group Buy</p>
                     <p className="text-sm text-muted-foreground">Get discounts when others join!</p>
                   </div>
-                  <StartGroupBuyDialog
-                    product={{
-                      id: product.id,
-                      name: product.name,
-                      base_price: product.base_price,
-                    }}
-                  />
+                  <StartGroupBuyDialog product={{ id: product.id, name: product.name, base_price: product.base_price }} />
                 </div>
               </div>
             )}
@@ -239,39 +265,27 @@ export default function ProductDetail() {
             {/* Title & Rating */}
             <div>
               <p className="text-sm text-muted-foreground mb-1">{product.category_name || 'Uncategorized'}</p>
-              <h1 className="text-3xl font-bold font-serif text-foreground mb-2">
-                {product.name}
-              </h1>
+              <h1 className="text-3xl font-bold font-serif text-foreground mb-2">{product.name}</h1>
               <div className="flex items-center gap-2">
                 <div className="flex items-center">
                   <Star className="h-5 w-5 fill-accent-foreground text-accent-foreground" />
                   <span className="ml-1 font-medium text-foreground">{product.rating || 0}</span>
                 </div>
-                <span className="text-muted-foreground">
-                  ({product.review_count || 0} reviews)
-                </span>
+                <span className="text-muted-foreground">({product.review_count || 0} reviews)</span>
               </div>
             </div>
 
-            {/* Price */}
             <div>
-              <p className="text-3xl font-bold text-primary">
-                {formatPrice(product.base_price)}
-              </p>
+              <p className="text-3xl font-bold text-primary">{formatPrice(product.base_price)}</p>
               <p className="text-sm text-muted-foreground mt-1">Starting from</p>
             </div>
 
-            {/* Description */}
             <p className="text-muted-foreground">{product.description}</p>
 
             <Separator />
 
-            {/* Visual Variant Selection */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-foreground">
-                Select Options
-              </h3>
-
+              <h3 className="font-semibold text-foreground">Select Options</h3>
               {product.variants.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No variants available</p>
               ) : (
@@ -286,7 +300,6 @@ export default function ProductDetail() {
 
             <Separator />
 
-            {/* Shipping Options */}
             <div className="space-y-4">
               <h3 className="font-semibold text-foreground">Shipping Options</h3>
               {availableShipping.length === 0 ? (
@@ -313,11 +326,7 @@ export default function ProductDetail() {
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-primary">
-                            {formatPrice(option.price)}
-                          </p>
-                        </div>
+                        <p className="font-semibold text-primary">{formatPrice(option.price)}</p>
                       </CardContent>
                     </Card>
                   ))}
@@ -327,25 +336,14 @@ export default function ProductDetail() {
 
             <Separator />
 
-            {/* Add to Cart */}
             <div className="space-y-4">
               {selectedVariants.length > 0 && (
                 <div className="p-4 rounded-lg bg-card border border-border">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    {selectedVariants.length} variant(s) selected
-                  </p>
-                  <p className="text-2xl font-bold text-primary">
-                    Total: {formatPrice(totalPrice)}
-                  </p>
+                  <p className="text-sm text-muted-foreground mb-2">{selectedVariants.length} variant(s) selected</p>
+                  <p className="text-2xl font-bold text-primary">Total: {formatPrice(totalPrice)}</p>
                 </div>
               )}
-
-              <Button
-                size="lg"
-                className="w-full"
-                onClick={handleAddToCart}
-                disabled={selectedVariants.length === 0}
-              >
+              <Button size="lg" className="w-full" onClick={handleAddToCart} disabled={selectedVariants.length === 0}>
                 <ShoppingCart className="h-5 w-5 mr-2" />
                 Add to Cart
               </Button>
@@ -353,10 +351,12 @@ export default function ProductDetail() {
           </div>
         </div>
 
+        {/* Recently Viewed */}
+        <RecentlyViewedProducts currentProductId={product.id} />
+
         {/* Related Products */}
         <RelatedProducts productId={product.id} categoryId={product.category_id} />
 
-        {/* Reviews Section */}
         <div className="mt-12">
           <ProductReviews productId={product.id} productName={product.name} />
         </div>

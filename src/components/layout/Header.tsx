@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Search, Menu, User, X, LogOut, Settings, Package, Heart } from 'lucide-react';
+import { ShoppingCart, Search, Menu, User, X, LogOut, Settings, Package, Heart, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCart } from '@/contexts/CartContext';
@@ -15,12 +15,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { NotificationBell } from './NotificationBell';
+import { useTheme } from 'next-themes';
 
 export function Header() {
   const { totalItems } = useCart();
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const { theme, setTheme } = useTheme();
 
   const navLinks = [
     { name: 'Home', href: '/' },
@@ -32,6 +35,24 @@ export function Header() {
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/products?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery('');
+      setIsSearchOpen(false);
+    }
+  };
+
+  const handleMobileSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const input = form.querySelector('input') as HTMLInputElement;
+    if (input?.value.trim()) {
+      navigate(`/products?q=${encodeURIComponent(input.value.trim())}`);
+    }
   };
 
   return (
@@ -68,20 +89,23 @@ export function Header() {
           {/* Search */}
           <div className="hidden sm:flex items-center">
             {isSearchOpen ? (
-              <div className="flex items-center gap-2 animate-in slide-in-from-right">
+              <form onSubmit={handleSearch} className="flex items-center gap-2 animate-in slide-in-from-right">
                 <Input
                   placeholder="Search products..."
                   className="w-48 lg:w-64"
                   autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
                 <Button
                   variant="ghost"
                   size="icon"
+                  type="button"
                   onClick={() => setIsSearchOpen(false)}
                 >
                   <X className="h-4 w-4" />
                 </Button>
-              </div>
+              </form>
             ) : (
               <Button
                 variant="ghost"
@@ -92,6 +116,15 @@ export function Header() {
               </Button>
             )}
           </div>
+
+          {/* Dark Mode Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          >
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
 
           {/* Notifications */}
           <NotificationBell />
@@ -182,7 +215,9 @@ export function Header() {
                   </Link>
                 )}
                 <div className="border-t border-border pt-4 mt-4">
-                  <Input placeholder="Search products..." className="mb-4" />
+                  <form onSubmit={handleMobileSearch}>
+                    <Input placeholder="Search products..." className="mb-4" />
+                  </form>
                   {user ? (
                     <div className="space-y-2">
                       <p className="text-sm text-muted-foreground truncate">
