@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, Truck, MapPin, Clock, CheckCircle, XCircle, Loader, ChevronDown, ChevronUp, Phone, CreditCard, ShoppingBag, PackageCheck, Plane, MapPinned } from 'lucide-react';
+import { Package, Truck, MapPin, Clock, CheckCircle, XCircle, Loader, ChevronDown, ChevronUp, Phone, CreditCard, ShoppingBag, PackageCheck, Plane, MapPinned, Ban } from 'lucide-react';
+import { useMutation } from '@tanstack/react-query';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
@@ -312,7 +313,78 @@ export default function MyOrders() {
                                 )}
                               </span>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {/* Confirm Payment button for pending orders */}
+                              {order.status === 'pending' && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={async () => {
+                                    const { error } = await supabase
+                                      .from('orders')
+                                      .update({ status: 'payment_received', updated_at: new Date().toISOString() })
+                                      .eq('id', order.id)
+                                      .eq('user_id', user!.id);
+                                    if (error) {
+                                      toast.error('Failed to confirm payment');
+                                    } else {
+                                      toast.success('Payment confirmed!');
+                                      fetchOrders();
+                                    }
+                                  }}
+                                >
+                                  <CreditCard className="h-4 w-4 mr-1" />
+                                  Confirm Payment
+                                </Button>
+                              )}
+                              {/* Confirm Delivery button */}
+                              {(order.status === 'ready_for_delivery' || order.status === 'out_for_delivery') && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={async () => {
+                                    const { error } = await supabase
+                                      .from('orders')
+                                      .update({ status: 'delivered', updated_at: new Date().toISOString() })
+                                      .eq('id', order.id)
+                                      .eq('user_id', user!.id);
+                                    if (error) {
+                                      toast.error('Failed to confirm delivery');
+                                    } else {
+                                      toast.success('Delivery confirmed!');
+                                      fetchOrders();
+                                    }
+                                  }}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Confirm Delivery
+                                </Button>
+                              )}
+                              {/* Request Cancel button */}
+                              {['pending', 'payment_received', 'order_placed'].includes(order.status) && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-destructive border-destructive/50 hover:bg-destructive/10"
+                                  onClick={async () => {
+                                    if (!confirm('Are you sure you want to request cancellation?')) return;
+                                    const { error } = await supabase
+                                      .from('orders')
+                                      .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+                                      .eq('id', order.id)
+                                      .eq('user_id', user!.id);
+                                    if (error) {
+                                      toast.error('Failed to cancel order');
+                                    } else {
+                                      toast.success('Order cancelled');
+                                      fetchOrders();
+                                    }
+                                  }}
+                                >
+                                  <Ban className="h-4 w-4 mr-1" />
+                                  Cancel Order
+                                </Button>
+                              )}
                               <CollapsibleTrigger asChild>
                                 <Button variant="outline" size="sm">
                                   {expandedOrderId === order.id ? (
