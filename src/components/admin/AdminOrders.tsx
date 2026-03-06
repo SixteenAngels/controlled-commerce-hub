@@ -319,7 +319,76 @@ export function AdminOrders() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold font-serif text-foreground mb-6">Orders Management</h1>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <h1 className="text-3xl font-bold font-serif text-foreground">Orders Management</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search orders..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 w-64"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const data = filteredOrders.map(o => ({
+                'Order Number': o.order_number,
+                'Customer': (o.profiles as any)?.name || 'Unknown',
+                'Email': (o.profiles as any)?.email || '',
+                'Status': STATUS_LABELS[o.status as OrderStatus] || o.status,
+                'Total': Number(o.total_amount).toFixed(2),
+                'Date': format(new Date(o.created_at), 'yyyy-MM-dd HH:mm'),
+              }));
+              const headers = Object.keys(data[0] || {}).join(',');
+              const rows = data.map(row => Object.values(row).map(v => `"${v}"`).join(','));
+              const csv = [headers, ...rows].join('\n');
+              const blob = new Blob([csv], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `orders-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Export CSV
+          </Button>
+          {selectedOrders.size > 0 && (
+            <Select
+              onValueChange={(status) => {
+                selectedOrders.forEach(orderId => {
+                  const order = orders?.find(o => o.id === orderId);
+                  if (order) {
+                    updateStatusMutation.mutate({
+                      orderId,
+                      status: status as OrderStatus,
+                      userId: order.user_id,
+                      orderNumber: order.order_number,
+                    });
+                  }
+                });
+                setSelectedOrders(new Set());
+              }}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder={`Bulk update (${selectedOrders.size})`} />
+              </SelectTrigger>
+              <SelectContent className="bg-popover z-50">
+                {ORDER_STATUSES.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {STATUS_LABELS[status]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <ScrollArea className="w-full whitespace-nowrap mb-6">
