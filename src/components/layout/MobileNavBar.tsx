@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, ShoppingCart, User, Package } from 'lucide-react';
+import { Home, Search, ShoppingCart, User, HelpCircle } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -9,7 +9,7 @@ const navItems = [
   { icon: Home, label: 'Home', href: '/' },
   { icon: Search, label: 'Browse', href: '/products' },
   { icon: ShoppingCart, label: 'Cart', href: '/cart', showBadge: true },
-  { icon: Package, label: 'Orders', href: '/my-orders' },
+  { icon: HelpCircle, label: 'Help', href: '/help' },
   { icon: User, label: 'Account', href: '/profile' },
 ];
 

@@ -79,11 +79,19 @@ export default function TrackOrder() {
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'delivered': return 'bg-green-500';
+      case 'payment_received': return 'bg-green-600';
       case 'cancelled':
       case 'refunded': return 'bg-red-500';
       case 'out_for_delivery': return 'bg-blue-500';
+      case 'ready_for_delivery': return 'bg-teal-500';
+      case 'in_ghana': return 'bg-orange-600';
       case 'in_transit':
       case 'shipped': return 'bg-orange-500';
+      case 'packed_for_delivery': return 'bg-purple-500';
+      case 'order_placed':
+      case 'confirmed':
+      case 'processing': return 'bg-blue-500';
+      case 'pending': return 'bg-yellow-500';
       default: return 'bg-muted';
     }
   };
