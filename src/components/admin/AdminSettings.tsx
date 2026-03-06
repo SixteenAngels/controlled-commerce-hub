@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,39 +8,119 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Key, Mail, Map, Shield, Database } from 'lucide-react';
+import { Settings, Key, Mail, Map, Shield, Database, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+interface SettingsState {
+  emailNotifications: boolean;
+  orderEmailsEnabled: boolean;
+  marketingEmailsEnabled: boolean;
+  mapProvider: string;
+  otpEnabled: boolean;
+  otpLength: number;
+  otpExpiryMinutes: number;
+  maintenanceMode: boolean;
+  debugMode: boolean;
+}
+
+const DEFAULT_SETTINGS: SettingsState = {
+  emailNotifications: true,
+  orderEmailsEnabled: true,
+  marketingEmailsEnabled: false,
+  mapProvider: 'openstreetmap',
+  otpEnabled: true,
+  otpLength: 6,
+  otpExpiryMinutes: 10,
+  maintenanceMode: false,
+  debugMode: false,
+};
+
 export function AdminSettings() {
-  const [settings, setSettings] = useState({
-    // Email Settings
-    emailNotifications: true,
-    orderEmailsEnabled: true,
-    marketingEmailsEnabled: false,
-    
-    // Map Settings
-    mapProvider: 'openstreetmap',
-    
-    // OTP Settings
-    otpEnabled: true,
-    otpLength: 6,
-    otpExpiryMinutes: 10,
-    
-    // General Settings
-    maintenanceMode: false,
-    debugMode: false,
+  const queryClient = useQueryClient();
+
+  const { data: dbSettings, isLoading } = useQuery({
+    queryKey: ['admin-settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('store_settings')
+        .select('key, value');
+      if (error) throw error;
+      const map: Record<string, any> = {};
+      data?.forEach((row) => { map[row.key] = row.value; });
+      return map;
+    },
+  });
+
+  const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
+
+  useEffect(() => {
+    if (dbSettings) {
+      setSettings({
+        emailNotifications: dbSettings.emailNotifications ?? DEFAULT_SETTINGS.emailNotifications,
+        orderEmailsEnabled: dbSettings.orderEmailsEnabled ?? DEFAULT_SETTINGS.orderEmailsEnabled,
+        marketingEmailsEnabled: dbSettings.marketingEmailsEnabled ?? DEFAULT_SETTINGS.marketingEmailsEnabled,
+        mapProvider: dbSettings.mapProvider ?? DEFAULT_SETTINGS.mapProvider,
+        otpEnabled: dbSettings.otpEnabled ?? DEFAULT_SETTINGS.otpEnabled,
+        otpLength: dbSettings.otpLength ?? DEFAULT_SETTINGS.otpLength,
+        otpExpiryMinutes: dbSettings.otpExpiryMinutes ?? DEFAULT_SETTINGS.otpExpiryMinutes,
+        maintenanceMode: dbSettings.maintenanceMode ?? DEFAULT_SETTINGS.maintenanceMode,
+        debugMode: dbSettings.debugMode ?? DEFAULT_SETTINGS.debugMode,
+      });
+    }
+  }, [dbSettings]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (settingsToSave: SettingsState) => {
+      const entries = Object.entries(settingsToSave);
+      for (const [key, value] of entries) {
+        const { data: existing } = await supabase
+          .from('store_settings')
+          .select('id')
+          .eq('key', key)
+          .maybeSingle();
+
+        if (existing) {
+          const { error } = await supabase
+            .from('store_settings')
+            .update({ value: JSON.parse(JSON.stringify(value)), updated_at: new Date().toISOString() })
+            .eq('key', key);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('store_settings')
+            .insert({ key, value: JSON.parse(JSON.stringify(value)) });
+          if (error) throw error;
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['store-settings'] });
+      toast.success('Settings saved successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to save settings: ${error.message}`);
+    },
   });
 
   const handleSave = () => {
-    // In a real app, this would save to a settings table in the database
-    toast.success('Settings saved successfully');
+    saveMutation.mutate(settings);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold font-serif">System Settings</h1>
-        <Button onClick={handleSave}>
+        <Button onClick={handleSave} disabled={saveMutation.isPending}>
+          {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Save Changes
         </Button>
       </div>
@@ -72,41 +154,29 @@ export function AdminSettings() {
           <Card>
             <CardHeader>
               <CardTitle>General Settings</CardTitle>
-              <CardDescription>
-                Configure general platform settings
-              </CardDescription>
+              <CardDescription>Configure general platform settings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Maintenance Mode</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Temporarily disable the store for maintenance
-                  </p>
+                  <p className="text-sm text-muted-foreground">Temporarily disable the store for maintenance</p>
                 </div>
                 <Switch
                   checked={settings.maintenanceMode}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, maintenanceMode: checked }))
-                  }
+                  onCheckedChange={(checked) => setSettings(prev => ({ ...prev, maintenanceMode: checked }))}
                 />
               </div>
-              
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Debug Mode</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Enable detailed logging for troubleshooting
-                  </p>
+                  <p className="text-sm text-muted-foreground">Enable detailed logging for troubleshooting</p>
                 </div>
                 <Switch
                   checked={settings.debugMode}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, debugMode: checked }))
-                  }
+                  onCheckedChange={(checked) => setSettings(prev => ({ ...prev, debugMode: checked }))}
                 />
               </div>
-
               <div className="pt-4 border-t border-border">
                 <div className="flex items-center gap-2 mb-4">
                   <Database className="h-5 w-5 text-muted-foreground" />
@@ -132,53 +202,37 @@ export function AdminSettings() {
           <Card>
             <CardHeader>
               <CardTitle>Email Settings</CardTitle>
-              <CardDescription>
-                Configure email notifications and delivery
-              </CardDescription>
+              <CardDescription>Configure email notifications and delivery</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Email Notifications</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Enable email notifications for the platform
-                  </p>
+                  <p className="text-sm text-muted-foreground">Enable email notifications for the platform</p>
                 </div>
                 <Switch
                   checked={settings.emailNotifications}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, emailNotifications: checked }))
-                  }
+                  onCheckedChange={(checked) => setSettings(prev => ({ ...prev, emailNotifications: checked }))}
                 />
               </div>
-              
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Order Emails</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Send order confirmation and update emails
-                  </p>
+                  <p className="text-sm text-muted-foreground">Send order confirmation and update emails</p>
                 </div>
                 <Switch
                   checked={settings.orderEmailsEnabled}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, orderEmailsEnabled: checked }))
-                  }
+                  onCheckedChange={(checked) => setSettings(prev => ({ ...prev, orderEmailsEnabled: checked }))}
                 />
               </div>
-              
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Marketing Emails</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Send promotional and marketing emails
-                  </p>
+                  <p className="text-sm text-muted-foreground">Send promotional and marketing emails</p>
                 </div>
                 <Switch
                   checked={settings.marketingEmailsEnabled}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, marketingEmailsEnabled: checked }))
-                  }
+                  onCheckedChange={(checked) => setSettings(prev => ({ ...prev, marketingEmailsEnabled: checked }))}
                 />
               </div>
             </CardContent>
@@ -190,9 +244,7 @@ export function AdminSettings() {
           <Card>
             <CardHeader>
               <CardTitle>Map Configuration</CardTitle>
-              <CardDescription>
-                Configure map provider for order tracking
-              </CardDescription>
+              <CardDescription>Configure map provider for order tracking</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
@@ -201,8 +253,8 @@ export function AdminSettings() {
                   <button
                     onClick={() => setSettings(prev => ({ ...prev, mapProvider: 'openstreetmap' }))}
                     className={`p-4 border rounded-lg text-left transition-colors ${
-                      settings.mapProvider === 'openstreetmap' 
-                        ? 'border-primary bg-primary/5' 
+                      settings.mapProvider === 'openstreetmap'
+                        ? 'border-primary bg-primary/5'
                         : 'border-border hover:border-primary/50'
                     }`}
                   >
@@ -212,8 +264,8 @@ export function AdminSettings() {
                   <button
                     onClick={() => setSettings(prev => ({ ...prev, mapProvider: 'mapbox' }))}
                     className={`p-4 border rounded-lg text-left transition-colors ${
-                      settings.mapProvider === 'mapbox' 
-                        ? 'border-primary bg-primary/5' 
+                      settings.mapProvider === 'mapbox'
+                        ? 'border-primary bg-primary/5'
                         : 'border-border hover:border-primary/50'
                     }`}
                   >
@@ -222,7 +274,6 @@ export function AdminSettings() {
                   </button>
                 </div>
               </div>
-
               {settings.mapProvider === 'mapbox' && (
                 <div className="space-y-2">
                   <Label htmlFor="mapbox-key">Mapbox API Key</Label>
@@ -238,26 +289,19 @@ export function AdminSettings() {
           <Card>
             <CardHeader>
               <CardTitle>Security Settings</CardTitle>
-              <CardDescription>
-                Configure OTP and authentication settings
-              </CardDescription>
+              <CardDescription>Configure OTP and authentication settings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
                   <Label>OTP Verification</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Require OTP for sensitive actions
-                  </p>
+                  <p className="text-sm text-muted-foreground">Require OTP for sensitive actions</p>
                 </div>
                 <Switch
                   checked={settings.otpEnabled}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, otpEnabled: checked }))
-                  }
+                  onCheckedChange={(checked) => setSettings(prev => ({ ...prev, otpEnabled: checked }))}
                 />
               </div>
-              
               {settings.otpEnabled && (
                 <>
                   <div className="space-y-2">
@@ -268,12 +312,9 @@ export function AdminSettings() {
                       min={4}
                       max={8}
                       value={settings.otpLength}
-                      onChange={(e) => 
-                        setSettings(prev => ({ ...prev, otpLength: parseInt(e.target.value) }))
-                      }
+                      onChange={(e) => setSettings(prev => ({ ...prev, otpLength: parseInt(e.target.value) }))}
                     />
                   </div>
-                  
                   <div className="space-y-2">
                     <Label htmlFor="otp-expiry">OTP Expiry (minutes)</Label>
                     <Input
@@ -282,9 +323,7 @@ export function AdminSettings() {
                       min={1}
                       max={60}
                       value={settings.otpExpiryMinutes}
-                      onChange={(e) => 
-                        setSettings(prev => ({ ...prev, otpExpiryMinutes: parseInt(e.target.value) }))
-                      }
+                      onChange={(e) => setSettings(prev => ({ ...prev, otpExpiryMinutes: parseInt(e.target.value) }))}
                     />
                   </div>
                 </>
@@ -298,9 +337,7 @@ export function AdminSettings() {
           <Card>
             <CardHeader>
               <CardTitle>API Keys</CardTitle>
-              <CardDescription>
-                Manage external service API keys
-              </CardDescription>
+              <CardDescription>Manage external service API keys</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="p-4 border border-border rounded-lg bg-muted/50">
@@ -313,7 +350,6 @@ export function AdminSettings() {
                   To update API keys, please use the Lovable Cloud secrets management.
                 </p>
               </div>
-
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 border border-border rounded-lg">
                   <div>
@@ -322,7 +358,6 @@ export function AdminSettings() {
                   </div>
                   <Badge variant="default" className="bg-green-600">Configured</Badge>
                 </div>
-                
                 <div className="flex items-center justify-between p-4 border border-border rounded-lg">
                   <div>
                     <p className="font-medium">Email Service</p>
@@ -330,7 +365,6 @@ export function AdminSettings() {
                   </div>
                   <Badge variant="secondary">Using Default</Badge>
                 </div>
-                
                 <div className="flex items-center justify-between p-4 border border-border rounded-lg">
                   <div>
                     <p className="font-medium">Map Service</p>
