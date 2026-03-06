@@ -4,6 +4,7 @@ import { HeroSection } from '@/components/home/HeroSection';
 import { CategorySection } from '@/components/home/CategorySection';
 import { FeaturedProducts } from '@/components/home/FeaturedProducts';
 import { GroupBuySection } from '@/components/home/GroupBuySection';
+import { RecentlyViewedProducts } from '@/components/products/RecentlyViewedProducts';
 
 const Index = () => {
   return (
@@ -13,6 +14,9 @@ const Index = () => {
         <HeroSection />
         <CategorySection />
         <FeaturedProducts />
+        <div className="container">
+          <RecentlyViewedProducts />
+        </div>
         <GroupBuySection />
       </main>
       <Footer />
