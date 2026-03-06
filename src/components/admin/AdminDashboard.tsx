@@ -3,8 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Package, FolderTree, Users, ShoppingCart, AlertTriangle, Zap, TrendingUp, DollarSign } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useCurrency } from '@/hooks/useCurrency';
 
 export function AdminDashboard() {
+  const { formatPrice } = useCurrency();
   const { data: productCount } = useQuery({
     queryKey: ['admin-product-count'],
     queryFn: async () => {
@@ -115,7 +117,7 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-foreground">
-              ${(orderStats?.totalRevenue ?? 0).toFixed(2)}
+              {formatPrice(orderStats?.totalRevenue ?? 0)}
             </p>
           </CardContent>
         </Card>
