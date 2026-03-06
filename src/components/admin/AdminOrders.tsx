@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { Loader2, Eye, MapPin, Package, Calendar, Clock, CreditCard, ShoppingBag, PackageCheck, Truck, Plane, MapPinned, Home, CheckCircle, XCircle, RotateCcw } from 'lucide-react';
+import { Loader2, Eye, MapPin, Package, Calendar, Clock, CreditCard, ShoppingBag, PackageCheck, Truck, Plane, MapPinned, Home, CheckCircle, XCircle, RotateCcw, Search, Download, StickyNote, CheckSquare } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { useCurrency } from '@/hooks/useCurrency';
 
@@ -76,6 +77,8 @@ export function AdminOrders() {
   const { formatPrice } = useCurrency();
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [trackingLocation, setTrackingLocation] = useState({ lat: '', lng: '', location: '', notes: '' });
   const [deliveryDates, setDeliveryDates] = useState<{ orderId: string; start: string; end: string }>({ orderId: '', start: '', end: '' });
 
@@ -131,9 +134,18 @@ export function AdminOrders() {
   });
 
   const filteredOrders = orders?.filter(order => {
-    if (activeTab === 'all') return true;
-    const tabConfig = STATUS_TABS.find(t => t.value === activeTab);
-    return tabConfig?.statuses.includes(order.status as OrderStatus);
+    // Tab filter
+    const tabMatch = activeTab === 'all' || STATUS_TABS.find(t => t.value === activeTab)?.statuses.includes(order.status as OrderStatus);
+    if (!tabMatch) return false;
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const name = (order.profiles as any)?.name?.toLowerCase() || '';
+      const email = (order.profiles as any)?.email?.toLowerCase() || '';
+      const orderNum = order.order_number?.toLowerCase() || '';
+      return name.includes(q) || email.includes(q) || orderNum.includes(q);
+    }
+    return true;
   }) || [];
 
   const getOrderCountForTab = (tabValue: string) => {
