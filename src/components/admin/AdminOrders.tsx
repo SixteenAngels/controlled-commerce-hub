@@ -429,13 +429,26 @@ export function AdminOrders() {
               filteredOrders.map((order) => (
                 <Card key={order.id}>
                   <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg font-medium">
-                        Order #{order.order_number}
-                      </CardTitle>
-                      <Badge className={getStatusColor(order.status || 'pending')}>
-                        {STATUS_LABELS[order.status as OrderStatus] || order.status?.replace('_', ' ')}
-                      </Badge>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedOrders.has(order.id)}
+                        onChange={(e) => {
+                          const next = new Set(selectedOrders);
+                          if (e.target.checked) next.add(order.id);
+                          else next.delete(order.id);
+                          setSelectedOrders(next);
+                        }}
+                        className="h-4 w-4 rounded border-border"
+                      />
+                      <div className="flex items-center justify-between flex-1">
+                        <CardTitle className="text-lg font-medium">
+                          Order #{order.order_number}
+                        </CardTitle>
+                        <Badge className={getStatusColor(order.status || 'pending')}>
+                          {STATUS_LABELS[order.status as OrderStatus] || order.status?.replace('_', ' ')}
+                        </Badge>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
