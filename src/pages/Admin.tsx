@@ -19,6 +19,7 @@ import { AdminSettings } from '@/components/admin/AdminSettings';
 import { AdminRefunds } from '@/components/admin/AdminRefunds';
 import { StockManagement } from '@/components/admin/StockManagement';
 import { AdminQA } from '@/components/admin/AdminQA';
+import { CustomerLeaderboard } from '@/components/admin/CustomerLeaderboard';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 export default function Admin() {
@@ -56,6 +57,7 @@ export default function Admin() {
     { name: 'Promotions', href: '/admin/promotions', icon: Tag },
     { name: 'Reviews', href: '/admin/reviews', icon: Star },
     { name: 'Q&A', href: '/admin/qa', icon: HelpCircle },
+    { name: 'Leaderboard', href: '/admin/leaderboard', icon: Star },
     { name: 'Support', href: '/admin/support', icon: MessageCircle },
     { name: 'Receipts', href: '/admin/receipts', icon: FileText },
     { name: 'Users & Roles', href: '/admin/users', icon: Users },
@@ -155,6 +157,7 @@ export default function Admin() {
           <Route path="/promotions" element={<AdminPromotions />} />
           <Route path="/reviews" element={<AdminReviews />} />
           <Route path="/qa" element={<AdminQA />} />
+          <Route path="/leaderboard" element={<CustomerLeaderboard />} />
           <Route path="/support" element={<AdminSupport />} />
           <Route path="/receipts" element={<AdminReceipts />} />
           <Route path="/users" element={<AdminUsers />} />

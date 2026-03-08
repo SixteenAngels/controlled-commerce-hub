@@ -28,6 +28,7 @@ export function Header() {
   const navLinks = [
     { name: 'Home', href: '/' },
     { name: 'Products', href: '/products' },
+    { name: 'Flash Deals', href: '/flash-deals' },
     { name: 'Group Buys', href: '/group-buys' },
     { name: 'Categories', href: '/categories' },
   ];
