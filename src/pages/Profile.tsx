@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, MapPin, Phone, Mail, Plus, Trash2, Loader2, Edit2, Check, X, Package, Clock, Truck, CheckCircle, XCircle, RefreshCcw, ShoppingBag } from 'lucide-react';
+import { User, MapPin, Phone, Mail, Plus, Trash2, Loader2, Edit2, Check, X, Package, Clock, Truck, CheckCircle, XCircle, RefreshCcw, ShoppingBag, Gift, Award, Copy } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,6 +25,8 @@ import { TwoFactorManage } from '@/components/auth/TwoFactorManage';
 import { SessionManagement } from '@/components/auth/SessionManagement';
 import { PushNotificationSettings } from '@/components/profile/PushNotificationSettings';
 import { RefundRequestDialog } from '@/components/orders/RefundRequestDialog';
+import { useReferral } from '@/hooks/useReferral';
+import { useLoyaltyPoints } from '@/hooks/useLoyaltyPoints';
 
 interface Profile {
   name: string | null;
@@ -317,6 +319,14 @@ export default function Profile() {
             <TabsTrigger value="refunds" className="flex items-center gap-2">
               <RefreshCcw className="h-4 w-4" />
               Refunds
+            </TabsTrigger>
+            <TabsTrigger value="referral" className="flex items-center gap-2">
+              <Gift className="h-4 w-4" />
+              Referral
+            </TabsTrigger>
+            <TabsTrigger value="loyalty" className="flex items-center gap-2">
+              <Award className="h-4 w-4" />
+              Points
             </TabsTrigger>
           </TabsList>
 
