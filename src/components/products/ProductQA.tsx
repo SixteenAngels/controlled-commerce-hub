@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,6 +16,7 @@ interface ProductQAProps {
 
 export function ProductQA({ productId }: ProductQAProps) {
   const { user } = useAuth();
+  const { isEnabled } = useFeatureFlags();
   const queryClient = useQueryClient();
   const [question, setQuestion] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -51,6 +53,8 @@ export function ProductQA({ productId }: ProductQAProps) {
     },
     onError: () => toast.error('Failed to submit question'),
   });
+
+  if (!isEnabled('qa')) return null;
 
   return (
     <Card>

@@ -5,7 +5,8 @@ import { useGroupBuys } from '@/hooks/useGroupBuys';
 import { useMyGroupBuys } from '@/hooks/useMyGroupBuys';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCurrency } from '@/hooks/useCurrency';
-import { Users, Loader2, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { Users, Loader2, Clock, CheckCircle, XCircle, Ban } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,21 @@ export default function GroupBuys() {
   const { data: groupBuys, isLoading } = useGroupBuys();
   const { data: myGroupBuys, isLoading: myLoading } = useMyGroupBuys();
   const { formatPrice } = useCurrency();
+  const { isEnabled } = useFeatureFlags();
+
+  if (!isEnabled('group_buys')) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container py-16 text-center">
+          <Ban className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+          <h1 className="text-2xl font-bold text-foreground mb-2">Feature Disabled</h1>
+          <p className="text-muted-foreground">Group Buys is currently disabled.</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   const activeGroupBuys = groupBuys?.filter(gb => gb.status === 'open') || [];
   const totalParticipants = activeGroupBuys.reduce((sum, g) => sum + (g.current_participants || 0), 0);

@@ -1,5 +1,6 @@
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 import { useProducts } from '@/hooks/useProducts';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { ProductCard } from './ProductCard';
 import { useMemo } from 'react';
 
@@ -10,6 +11,7 @@ interface RecentlyViewedProductsProps {
 export function RecentlyViewedProducts({ currentProductId }: RecentlyViewedProductsProps) {
   const { recentlyViewed } = useRecentlyViewed();
   const { data: products } = useProducts();
+  const { isEnabled } = useFeatureFlags();
 
   const recentProducts = useMemo(() => {
     if (!products || recentlyViewed.length === 0) return [];
@@ -20,7 +22,7 @@ export function RecentlyViewedProducts({ currentProductId }: RecentlyViewedProdu
       .slice(0, 6);
   }, [products, recentlyViewed, currentProductId]);
 
-  if (recentProducts.length === 0) return null;
+  if (recentProducts.length === 0 || !isEnabled('recently_viewed')) return null;
 
   return (
     <div className="mt-12">

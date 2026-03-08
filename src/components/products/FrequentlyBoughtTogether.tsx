@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useCart } from '@/contexts/CartContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,6 +15,7 @@ interface Props {
 
 export function FrequentlyBoughtTogether({ productId }: Props) {
   const { formatPrice } = useCurrency();
+  const { isEnabled } = useFeatureFlags();
 
   const { data: bundles } = useQuery({
     queryKey: ['product-bundles', productId],
@@ -36,7 +38,7 @@ export function FrequentlyBoughtTogether({ productId }: Props) {
     },
   });
 
-  if (!bundles?.length) return null;
+  if (!bundles?.length || !isEnabled('bundles')) return null;
 
   return (
     <div className="mt-8">

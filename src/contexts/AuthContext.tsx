@@ -7,6 +7,8 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   isAdmin: boolean;
+  userRole: string;
+  managerPermissions: string[];
   signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
@@ -23,26 +25,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<string>('customer');
+  const [managerPermissions, setManagerPermissions] = useState<string[]>([]);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Defer role check with setTimeout to avoid deadlock
         if (session?.user) {
           setTimeout(() => {
             checkUserRole(session.user.id);
           }, 0);
         } else {
           setIsAdmin(false);
+          setUserRole('customer');
+          setManagerPermissions([]);
         }
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -64,7 +67,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .maybeSingle();
 
       if (!error && data) {
-        setIsAdmin(data.role === 'admin' || data.role === 'manager');
+        const role = data.role as string;
+        setUserRole(role);
+        setIsAdmin(role === 'admin' || role === 'manager');
+
+        // Fetch manager permissions if role is manager
+        if (role === 'manager') {
+          const { data: perms } = await supabase
+            .from('manager_permissions')
+            .select('permission')
+            .eq('user_id', userId);
+          setManagerPermissions(perms?.map(p => p.permission) || []);
+        } else {
+          setManagerPermissions([]);
+        }
+      } else {
+        setUserRole('customer');
+        setIsAdmin(false);
+        setManagerPermissions([]);
       }
     } catch (err) {
       console.error('Error checking user role:', err);
@@ -79,9 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         emailRedirectTo: redirectUrl,
-        data: {
-          name,
-        },
+        data: { name },
       },
     });
 
@@ -89,15 +107,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
-    // If rememberMe is false, we'll rely on session storage behavior
-    // Supabase persists session by default, but we can clear on browser close if needed
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (!error && !rememberMe) {
-      // Store a flag to indicate session should not persist beyond browser session
       sessionStorage.setItem('ihsan_temp_session', 'true');
     } else if (!error && rememberMe) {
       sessionStorage.removeItem('ihsan_temp_session');
@@ -109,11 +121,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/`,
-      },
+      options: { redirectTo: `${window.location.origin}/` },
     });
-
     return { error: error as Error | null };
   };
 
@@ -121,29 +130,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth?tab=reset`,
     });
-
     return { error: error as Error | null };
   };
 
   const updatePassword = async (newPassword: string) => {
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
-
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
     return { error: error as Error | null };
   };
 
   const resendVerificationEmail = async (email: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email,
-      options: {
-        emailRedirectTo: redirectUrl,
-      },
+      options: { emailRedirectTo: redirectUrl },
     });
-
     return { error: error as Error | null };
   };
 
@@ -153,6 +154,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setIsAdmin(false);
+    setUserRole('customer');
+    setManagerPermissions([]);
   };
 
   return (
@@ -162,6 +165,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         isLoading,
         isAdmin,
+        userRole,
+        managerPermissions,
         signUp,
         signIn,
         signInWithGoogle,

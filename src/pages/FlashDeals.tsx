@@ -5,8 +5,9 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { ProductCard } from '@/components/products/ProductCard';
 import { Badge } from '@/components/ui/badge';
-import { Zap, Clock, Loader2 } from 'lucide-react';
+import { Zap, Clock, Loader2, Ban } from 'lucide-react';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { Product } from '@/types';
 
 function CountdownTimer({ endsAt }: { endsAt: string }) {
@@ -50,6 +51,21 @@ function CountdownTimer({ endsAt }: { endsAt: string }) {
 
 export default function FlashDeals() {
   const { formatPrice } = useCurrency();
+  const { isEnabled } = useFeatureFlags();
+
+  if (!isEnabled('flash_deals')) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container py-16 text-center">
+          <Ban className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+          <h1 className="text-2xl font-bold text-foreground mb-2">Feature Disabled</h1>
+          <p className="text-muted-foreground">Flash Deals is currently disabled.</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   const { data: flashProducts, isLoading } = useQuery({
     queryKey: ['flash-deals'],

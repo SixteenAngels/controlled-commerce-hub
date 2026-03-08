@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Cookie } from 'lucide-react';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 export function CookieConsent() {
+  const { isEnabled } = useFeatureFlags();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -23,7 +25,7 @@ export function CookieConsent() {
     setShow(false);
   };
 
-  if (!show) return null;
+  if (!show || !isEnabled('cookie_consent')) return null;
 
   return (
     <div className="fixed bottom-20 md:bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-md z-[60] animate-in slide-in-from-bottom">

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { Button } from '@/components/ui/button';
 import { Bell, BellOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,6 +13,7 @@ interface Props {
 
 export function PriceDropAlert({ productId }: Props) {
   const { user } = useAuth();
+  const { isEnabled } = useFeatureFlags();
   const queryClient = useQueryClient();
 
   const { data: alert } = useQuery({
@@ -52,7 +54,7 @@ export function PriceDropAlert({ productId }: Props) {
     onError: () => toast.error('Failed to update alert'),
   });
 
-  if (!user) return null;
+  if (!user || !isEnabled('price_drop_alerts')) return null;
 
   return (
     <Button

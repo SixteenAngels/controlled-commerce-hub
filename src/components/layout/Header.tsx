@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { NotificationBell } from './NotificationBell';
 import { useTheme } from 'next-themes';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 export function Header() {
   const { totalItems } = useCart();
@@ -24,6 +25,7 @@ export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { theme, setTheme } = useTheme();
+  const { isEnabled } = useFeatureFlags();
 
   const navLinks = [
     { name: 'Home', href: '/' },
@@ -147,10 +149,12 @@ export function Header() {
                   <Package className="mr-2 h-4 w-4" />
                   My Orders
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/wishlist')}>
-                  <Heart className="mr-2 h-4 w-4" />
-                  Wishlist
-                </DropdownMenuItem>
+                {isEnabled('wishlist') && (
+                  <DropdownMenuItem onClick={() => navigate('/wishlist')}>
+                    <Heart className="mr-2 h-4 w-4" />
+                    Wishlist
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => navigate('/profile')}>
                   <User className="mr-2 h-4 w-4" />
                   Profile
