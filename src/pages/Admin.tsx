@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Package, FolderTree, Users, LayoutDashboard, ShoppingCart, Truck, Tag, Star, MessageCircle, FileText, Bell, Settings, AlertTriangle, RefreshCcw } from 'lucide-react';
+import { Loader2, Package, FolderTree, Users, LayoutDashboard, ShoppingCart, Truck, Tag, Star, MessageCircle, FileText, Bell, Settings, AlertTriangle, RefreshCcw, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AdminProducts } from '@/components/admin/AdminProducts';
 import { AdminCategories } from '@/components/admin/AdminCategories';
@@ -18,6 +18,7 @@ import { AdminNotifications } from '@/components/admin/AdminNotifications';
 import { AdminSettings } from '@/components/admin/AdminSettings';
 import { AdminRefunds } from '@/components/admin/AdminRefunds';
 import { StockManagement } from '@/components/admin/StockManagement';
+import { AdminQA } from '@/components/admin/AdminQA';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 export default function Admin() {
@@ -54,6 +55,7 @@ export default function Admin() {
     { name: 'Categories', href: '/admin/categories', icon: FolderTree },
     { name: 'Promotions', href: '/admin/promotions', icon: Tag },
     { name: 'Reviews', href: '/admin/reviews', icon: Star },
+    { name: 'Q&A', href: '/admin/qa', icon: HelpCircle },
     { name: 'Support', href: '/admin/support', icon: MessageCircle },
     { name: 'Receipts', href: '/admin/receipts', icon: FileText },
     { name: 'Users & Roles', href: '/admin/users', icon: Users },
@@ -152,6 +154,7 @@ export default function Admin() {
           <Route path="/categories" element={<AdminCategories />} />
           <Route path="/promotions" element={<AdminPromotions />} />
           <Route path="/reviews" element={<AdminReviews />} />
+          <Route path="/qa" element={<AdminQA />} />
           <Route path="/support" element={<AdminSupport />} />
           <Route path="/receipts" element={<AdminReceipts />} />
           <Route path="/users" element={<AdminUsers />} />

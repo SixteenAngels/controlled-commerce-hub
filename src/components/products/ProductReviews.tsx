@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Star, User, Check, Loader2 } from 'lucide-react';
+import { Star, User, Check, Loader2, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -15,6 +16,9 @@ interface Review {
   rating: number;
   title: string | null;
   comment: string | null;
+  image_url: string | null;
+  admin_response: string | null;
+  admin_response_at: string | null;
   is_verified: boolean;
   created_at: string;
   profiles: {
@@ -34,6 +38,8 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
   const [canReview, setCanReview] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [reviewImage, setReviewImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [newReview, setNewReview] = useState({
     rating: 5,
     title: '',
@@ -55,6 +61,9 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
         rating,
         title,
         comment,
+        image_url,
+        admin_response,
+        admin_response_at,
         is_verified,
         created_at,
         profiles:user_id (name)
@@ -70,7 +79,6 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
   };
 
   const checkCanReview = async () => {
-    // Check if user has purchased this product
     const { data: orders } = await supabase
       .from('orders')
       .select(`
@@ -85,14 +93,12 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
       .eq('status', 'delivered');
 
     if (orders) {
-      // Check if any delivered order contains this product
-      const hasPurchased = orders.some(order => 
-        order.order_items?.some((item: any) => 
+      const hasPurchased = orders.some(order =>
+        order.order_items?.some((item: any) =>
           item.product_variants?.product_id === productId
         )
       );
 
-      // Also check if user already reviewed
       const { data: existingReview } = await supabase
         .from('reviews')
         .select('id')
@@ -101,6 +107,18 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
         .single();
 
       setCanReview(hasPurchased && !existingReview);
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image must be less than 5MB');
+        return;
+      }
+      setReviewImage(file);
+      setImagePreview(URL.createObjectURL(file));
     }
   };
 
@@ -117,6 +135,24 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
 
     setSubmitting(true);
 
+    let imageUrl: string | null = null;
+
+    // Upload image if provided
+    if (reviewImage) {
+      const ext = reviewImage.name.split('.').pop();
+      const path = `reviews/${user.id}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(path, reviewImage);
+
+      if (!uploadError) {
+        const { data: urlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(path);
+        imageUrl = urlData.publicUrl;
+      }
+    }
+
     const { error } = await supabase
       .from('reviews')
       .insert({
@@ -125,7 +161,8 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
         rating: newReview.rating,
         title: newReview.title || null,
         comment: newReview.comment || null,
-        is_verified: true, // Verified because we checked they purchased
+        image_url: imageUrl,
+        is_verified: true,
       });
 
     if (error) {
@@ -134,6 +171,8 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
       toast.success('Review submitted! It will appear after approval.');
       setShowReviewForm(false);
       setNewReview({ rating: 5, title: '', comment: '' });
+      setReviewImage(null);
+      setImagePreview(null);
       setCanReview(false);
     }
     setSubmitting(false);
@@ -146,8 +185,8 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
   const ratingCounts = [5, 4, 3, 2, 1].map(rating => ({
     rating,
     count: reviews.filter(r => r.rating === rating).length,
-    percentage: reviews.length > 0 
-      ? (reviews.filter(r => r.rating === rating).length / reviews.length) * 100 
+    percentage: reviews.length > 0
+      ? (reviews.filter(r => r.rating === rating).length / reviews.length) * 100
       : 0,
   }));
 
@@ -192,7 +231,6 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
                 </div>
               </div>
 
-              {/* Rating Breakdown */}
               <div className="space-y-2">
                 {ratingCounts.map(({ rating, count, percentage }) => (
                   <div key={rating} className="flex items-center gap-2">
@@ -263,6 +301,32 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
                       className="mt-1"
                       rows={4}
                     />
+                  </div>
+                  <div>
+                    <Label>Add a Photo (optional)</Label>
+                    <div className="mt-1 flex items-center gap-3">
+                      <label className="flex items-center gap-2 px-4 py-2 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
+                        <Camera className="h-4 w-4" />
+                        <span className="text-sm">Choose Photo</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleImageChange}
+                        />
+                      </label>
+                      {imagePreview && (
+                        <div className="relative">
+                          <img src={imagePreview} alt="Preview" className="h-16 w-16 object-cover rounded-md" />
+                          <button
+                            onClick={() => { setReviewImage(null); setImagePreview(null); }}
+                            className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button onClick={handleSubmitReview} disabled={submitting}>
@@ -343,6 +407,28 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
                     )}
                     {review.comment && (
                       <p className="text-muted-foreground">{review.comment}</p>
+                    )}
+                    {review.image_url && (
+                      <img
+                        src={review.image_url}
+                        alt="Review photo"
+                        className="mt-3 rounded-lg max-h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => window.open(review.image_url!, '_blank')}
+                      />
+                    )}
+                    {/* Admin Response */}
+                    {review.admin_response && (
+                      <div className="mt-3 p-3 bg-primary/5 rounded-lg border-l-2 border-primary">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="secondary" className="text-xs">Ihsan Team</Badge>
+                          {review.admin_response_at && (
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(review.admin_response_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-foreground">{review.admin_response}</p>
+                      </div>
                     )}
                   </div>
                 </div>

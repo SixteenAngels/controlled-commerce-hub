@@ -1,15 +1,19 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Star, Check, X, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2, Star, Check, X, Trash2, Eye, EyeOff, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
 export function AdminReviews() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [responses, setResponses] = useState<Record<string, string>>({});
 
   const { data: reviews, isLoading } = useQuery({
     queryKey: ['admin-reviews'],
@@ -34,36 +38,43 @@ export function AdminReviews() {
         .from('reviews')
         .update({ is_approved })
         .eq('id', id);
-      
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-reviews'] });
       toast.success('Review updated');
     },
-    onError: (error) => {
-      toast.error('Failed to update review');
-      console.error(error);
-    },
+    onError: () => toast.error('Failed to update review'),
   });
 
   const deleteReviewMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('reviews')
-        .delete()
-        .eq('id', id);
-      
+      const { error } = await supabase.from('reviews').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-reviews'] });
       toast.success('Review deleted');
     },
-    onError: (error) => {
-      toast.error('Failed to delete review');
-      console.error(error);
+    onError: () => toast.error('Failed to delete review'),
+  });
+
+  const respondMutation = useMutation({
+    mutationFn: async ({ id, response }: { id: string; response: string }) => {
+      const { error } = await supabase
+        .from('reviews')
+        .update({
+          admin_response: response,
+          admin_response_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+      if (error) throw error;
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-reviews'] });
+      toast.success('Response posted');
+    },
+    onError: () => toast.error('Failed to post response'),
   });
 
   const renderStars = (rating: number) => {
@@ -134,6 +145,45 @@ export function AdminReviews() {
                 </div>
                 
                 <p className="text-sm">{review.comment || 'No comment'}</p>
+
+                {/* Review photo */}
+                {review.image_url && (
+                  <img
+                    src={review.image_url}
+                    alt="Review photo"
+                    className="rounded-lg max-h-40 object-cover"
+                  />
+                )}
+
+                {/* Admin response section */}
+                {review.admin_response ? (
+                  <div className="p-3 bg-primary/5 rounded-lg border-l-2 border-primary">
+                    <p className="text-xs text-muted-foreground mb-1">Your response:</p>
+                    <p className="text-sm text-foreground">{review.admin_response}</p>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Textarea
+                      value={responses[review.id] || ''}
+                      onChange={(e) => setResponses({ ...responses, [review.id]: e.target.value })}
+                      placeholder="Write a public response..."
+                      rows={2}
+                      className="flex-1"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        if (responses[review.id]?.trim()) {
+                          respondMutation.mutate({ id: review.id, response: responses[review.id].trim() });
+                          setResponses({ ...responses, [review.id]: '' });
+                        }
+                      }}
+                      disabled={!responses[review.id]?.trim() || respondMutation.isPending}
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
                 
                 <div className="flex items-center justify-between pt-2 border-t border-border">
                   <p className="text-sm text-muted-foreground">
