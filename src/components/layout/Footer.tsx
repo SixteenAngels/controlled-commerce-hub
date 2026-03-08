@@ -42,6 +42,7 @@ export function Footer() {
             <h5 className="font-semibold text-foreground mb-4">Shop</h5>
             <ul className="space-y-2">
               <li><Link to="/products" className="text-sm text-muted-foreground hover:text-primary transition-colors">All Products</Link></li>
+              <li><Link to="/flash-deals" className="text-sm text-muted-foreground hover:text-primary transition-colors">Flash Deals</Link></li>
               <li><Link to="/group-buys" className="text-sm text-muted-foreground hover:text-primary transition-colors">Group Buys</Link></li>
               <li><Link to="/categories" className="text-sm text-muted-foreground hover:text-primary transition-colors">Categories</Link></li>
             </ul>
@@ -49,9 +50,10 @@ export function Footer() {
           <div>
             <h5 className="font-semibold text-foreground mb-4">Support</h5>
             <ul className="space-y-2">
-              <li><a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Help Center</a></li>
-              <li><a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Track Order</a></li>
-              <li><a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Shipping Info</a></li>
+              <li><Link to="/help" className="text-sm text-muted-foreground hover:text-primary transition-colors">Help Center</Link></li>
+              <li><Link to="/track-order" className="text-sm text-muted-foreground hover:text-primary transition-colors">Track Order</Link></li>
+              <li><Link to="/delivery-zones" className="text-sm text-muted-foreground hover:text-primary transition-colors">Delivery Zones</Link></li>
+              <li><Link to="/customs-estimator" className="text-sm text-muted-foreground hover:text-primary transition-colors">Customs Estimator</Link></li>
             </ul>
           </div>
           <div>

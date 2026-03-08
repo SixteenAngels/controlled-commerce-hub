@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, FolderTree, Users, ShoppingCart, AlertTriangle, Zap, TrendingUp, DollarSign } from 'lucide-react';
+import { Package, FolderTree, Users, ShoppingCart, AlertTriangle, Zap, TrendingUp, DollarSign, Target } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useCurrency } from '@/hooks/useCurrency';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { Progress } from '@/components/ui/progress';
 import { useMemo } from 'react';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 
@@ -224,8 +225,21 @@ export function AdminDashboard() {
         </Card>
       )}
 
-      {/* Flash Deals & Alerts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      {/* Revenue Goal + Flash Deals & Alerts */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Revenue Goal</CardTitle>
+            <Target className="h-5 w-5 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-lg font-bold text-foreground mb-2">
+              {formatPrice(orderStats.totalRevenue)} / {formatPrice(revenueGoal as number || 50000)}
+            </p>
+            <Progress value={revenueProgress} className="h-2" />
+            <p className="text-xs text-muted-foreground mt-1">{revenueProgress.toFixed(1)}% of monthly target</p>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Flash Deals Running</CardTitle>
