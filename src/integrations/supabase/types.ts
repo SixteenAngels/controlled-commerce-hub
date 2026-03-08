@@ -390,7 +390,10 @@ export type Database = {
           group_buy_id: string
           id: string
           joined_at: string
+          payment_reference: string | null
+          payment_status: string | null
           quantity: number | null
+          shipping_address: Json | null
           user_id: string
           variant_id: string | null
         }
@@ -398,7 +401,10 @@ export type Database = {
           group_buy_id: string
           id?: string
           joined_at?: string
+          payment_reference?: string | null
+          payment_status?: string | null
           quantity?: number | null
+          shipping_address?: Json | null
           user_id: string
           variant_id?: string | null
         }
@@ -406,7 +412,10 @@ export type Database = {
           group_buy_id?: string
           id?: string
           joined_at?: string
+          payment_reference?: string | null
+          payment_status?: string | null
           quantity?: number | null
+          shipping_address?: Json | null
           user_id?: string
           variant_id?: string | null
         }
@@ -435,9 +444,11 @@ export type Database = {
           discount_percentage: number | null
           expires_at: string
           id: string
+          max_participants: number | null
           min_participants: number
           product_id: string
           status: Database["public"]["Enums"]["group_buy_status"] | null
+          title: string | null
           updated_at: string
         }
         Insert: {
@@ -447,9 +458,11 @@ export type Database = {
           discount_percentage?: number | null
           expires_at: string
           id?: string
+          max_participants?: number | null
           min_participants: number
           product_id: string
           status?: Database["public"]["Enums"]["group_buy_status"] | null
+          title?: string | null
           updated_at?: string
         }
         Update: {
@@ -459,9 +472,11 @@ export type Database = {
           discount_percentage?: number | null
           expires_at?: string
           id?: string
+          max_participants?: number | null
           min_participants?: number
           product_id?: string
           status?: Database["public"]["Enums"]["group_buy_status"] | null
+          title?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -646,9 +661,12 @@ export type Database = {
           created_at: string
           estimated_delivery_end: string | null
           estimated_delivery_start: string | null
+          group_buy_id: string | null
           id: string
+          is_group_buy_master: boolean | null
           notes: string | null
           order_number: string
+          parent_order_id: string | null
           shipping_address: Json | null
           shipping_class_id: string | null
           shipping_price: number | null
@@ -663,9 +681,12 @@ export type Database = {
           created_at?: string
           estimated_delivery_end?: string | null
           estimated_delivery_start?: string | null
+          group_buy_id?: string | null
           id?: string
+          is_group_buy_master?: boolean | null
           notes?: string | null
           order_number: string
+          parent_order_id?: string | null
           shipping_address?: Json | null
           shipping_class_id?: string | null
           shipping_price?: number | null
@@ -680,9 +701,12 @@ export type Database = {
           created_at?: string
           estimated_delivery_end?: string | null
           estimated_delivery_start?: string | null
+          group_buy_id?: string | null
           id?: string
+          is_group_buy_master?: boolean | null
           notes?: string | null
           order_number?: string
+          parent_order_id?: string | null
           shipping_address?: Json | null
           shipping_class_id?: string | null
           shipping_price?: number | null
@@ -693,6 +717,20 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_group_buy_id_fkey"
+            columns: ["group_buy_id"]
+            isOneToOne: false
+            referencedRelation: "group_buys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_parent_order_id_fkey"
+            columns: ["parent_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_shipping_class_id_fkey"
             columns: ["shipping_class_id"]
@@ -1476,6 +1514,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_expired_group_buys: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
