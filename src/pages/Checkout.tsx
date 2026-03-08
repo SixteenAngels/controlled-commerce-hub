@@ -371,7 +371,7 @@ export default function Checkout() {
 
       const reference = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       setPendingPaymentRef(reference);
-      setCallbackFired(false);
+      callbackFiredRef.current = false;
 
       const handler = window.PaystackPop.setup({
         key: configData.publicKey,
@@ -380,7 +380,7 @@ export default function Checkout() {
         currency: 'GHS',
         ref: reference,
         callback: function(response: { reference: string }) {
-          setCallbackFired(true);
+          callbackFiredRef.current = true;
           verifyAndCreateOrder(response.reference).catch((err) => {
             console.error('Order creation error:', err);
             toast.error('Order creation failed. Please contact support with ref: ' + response.reference);
@@ -392,7 +392,7 @@ export default function Checkout() {
           // Paystack fires onClose AFTER callback on success — ignore it then
           setTimeout(() => {
             // Use a small delay to let callback set the flag first
-            if (!callbackFired) {
+            if (!callbackFiredRef.current) {
               setIsProcessing(false);
               if (pendingPaymentRef) {
                 setShowPaymentRecovery(true);
