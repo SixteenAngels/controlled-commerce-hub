@@ -20,6 +20,7 @@ import { AdminRefunds } from '@/components/admin/AdminRefunds';
 import { StockManagement } from '@/components/admin/StockManagement';
 import { AdminQA } from '@/components/admin/AdminQA';
 import { CustomerLeaderboard } from '@/components/admin/CustomerLeaderboard';
+import { AdminBundles } from '@/components/admin/AdminBundles';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 export default function Admin() {
@@ -55,6 +56,7 @@ export default function Admin() {
     { name: 'Group Buys', href: '/admin/group-buys', icon: Users },
     { name: 'Categories', href: '/admin/categories', icon: FolderTree },
     { name: 'Promotions', href: '/admin/promotions', icon: Tag },
+    { name: 'Bundles', href: '/admin/bundles', icon: Package },
     { name: 'Reviews', href: '/admin/reviews', icon: Star },
     { name: 'Q&A', href: '/admin/qa', icon: HelpCircle },
     { name: 'Leaderboard', href: '/admin/leaderboard', icon: Star },
@@ -155,6 +157,7 @@ export default function Admin() {
           <Route path="/group-buys" element={<AdminGroupBuys />} />
           <Route path="/categories" element={<AdminCategories />} />
           <Route path="/promotions" element={<AdminPromotions />} />
+          <Route path="/bundles" element={<AdminBundles />} />
           <Route path="/reviews" element={<AdminReviews />} />
           <Route path="/qa" element={<AdminQA />} />
           <Route path="/leaderboard" element={<CustomerLeaderboard />} />

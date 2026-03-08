@@ -293,12 +293,12 @@ export function StartGroupBuyDialog({ product }: StartGroupBuyDialogProps) {
 
               <div className="flex gap-2 pt-4">
                 <Button variant="outline" className="flex-1" onClick={() => setIsOpen(false)}>Cancel</Button>
-                <Button
+              <Button
                   className="flex-1"
-                  disabled={!expiresAt || parseInt(minParticipants) < 2}
+                  disabled={!expiresAt || parseInt(minParticipants) < 2 || (variants && variants.length > 0 && !selectedVariantId)}
                   onClick={() => setStep('payment')}
                 >
-                  Next: Pay & Create
+                  {variants && variants.length > 0 && !selectedVariantId ? 'Select a variant' : 'Next: Pay & Create'}
                 </Button>
               </div>
             </>

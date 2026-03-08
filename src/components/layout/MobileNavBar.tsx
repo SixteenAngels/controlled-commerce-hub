@@ -1,16 +1,17 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, ShoppingCart, User, HelpCircle } from 'lucide-react';
+import { Home, Search, ShoppingCart, User, Sun, Moon } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useState, useCallback } from 'react';
+import { useTheme } from 'next-themes';
 
 const navItems = [
   { icon: Home, label: 'Home', href: '/' },
   { icon: Search, label: 'Browse', href: '/products' },
   { icon: ShoppingCart, label: 'Cart', href: '/cart', showBadge: true },
-  { icon: HelpCircle, label: 'Help', href: '/help' },
   { icon: User, label: 'Account', href: '/profile' },
+  { id: 'theme', label: 'Theme', href: '#theme' },
 ];
 
 // Haptic feedback for iOS
@@ -23,6 +24,7 @@ const triggerHaptic = () => {
 export function MobileNavBar() {
   const location = useLocation();
   const { totalItems } = useCart();
+  const { theme, setTheme } = useTheme();
   const [pressedItem, setPressedItem] = useState<string | null>(null);
 
   const handleTouchStart = useCallback((href: string) => {
@@ -38,9 +40,27 @@ export function MobileNavBar() {
     <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background/80 backdrop-blur-xl border-t border-border safe-area-bottom">
       <div className="flex items-center justify-around h-16 px-2">
         {navItems.map((item) => {
+          // Theme toggle button
+          if (item.id === 'theme') {
+            const ThemeIcon = theme === 'dark' ? Sun : Moon;
+            return (
+              <button
+                key="theme"
+                onClick={() => {
+                  triggerHaptic();
+                  setTheme(theme === 'dark' ? 'light' : 'dark');
+                }}
+                className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-muted-foreground"
+              >
+                <ThemeIcon className="h-6 w-6" />
+                <span className="text-[10px] font-medium">{theme === 'dark' ? 'Light' : 'Dark'}</span>
+              </button>
+            );
+          }
+
           const isActive = location.pathname === item.href;
           const isPressed = pressedItem === item.href;
-          const Icon = item.icon;
+          const Icon = item.icon!;
 
           return (
             <Link
