@@ -26,6 +26,7 @@ const Checkout = lazy(() => import("./pages/Checkout"));
 const OrderConfirmation = lazy(() => import("./pages/OrderConfirmation"));
 const MyOrders = lazy(() => import("./pages/MyOrders"));
 const GroupBuys = lazy(() => import("./pages/GroupBuys"));
+const GroupBuyDetail = lazy(() => import("./pages/GroupBuyDetail"));
 const Categories = lazy(() => import("./pages/Categories"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Admin = lazy(() => import("./pages/Admin"));
@@ -70,6 +71,7 @@ const App = () => (
                       <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
                       <Route path="/my-orders" element={<MyOrders />} />
                       <Route path="/group-buys" element={<GroupBuys />} />
+                      <Route path="/group-buy/:id" element={<GroupBuyDetail />} />
                       <Route path="/categories" element={<Categories />} />
                       <Route path="/auth" element={<Auth />} />
                       <Route path="/admin/*" element={<Admin />} />
