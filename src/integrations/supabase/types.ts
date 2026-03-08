@@ -667,6 +667,7 @@ export type Database = {
           notes: string | null
           order_number: string
           parent_order_id: string | null
+          payment_reference: string | null
           shipping_address: Json | null
           shipping_class_id: string | null
           shipping_price: number | null
@@ -687,6 +688,7 @@ export type Database = {
           notes?: string | null
           order_number: string
           parent_order_id?: string | null
+          payment_reference?: string | null
           shipping_address?: Json | null
           shipping_class_id?: string | null
           shipping_price?: number | null
@@ -707,6 +709,7 @@ export type Database = {
           notes?: string | null
           order_number?: string
           parent_order_id?: string | null
+          payment_reference?: string | null
           shipping_address?: Json | null
           shipping_class_id?: string | null
           shipping_price?: number | null

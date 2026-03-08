@@ -131,20 +131,30 @@ export function JoinGroupBuyDialog({ groupBuy }: JoinGroupBuyDialogProps) {
           variant_id: selectedVariantId || null,
         },
         callback: async (response: any) => {
-          // Payment successful - save participant
-          await saveParticipant(response.reference);
+          // Verify payment server-side before saving
+          const { data: verification } = await supabase.functions.invoke(
+            'verify-paystack-payment',
+            { body: { reference: response.reference } }
+          );
+
+          if (verification?.verified) {
+            await saveParticipant(response.reference);
+          } else {
+            toast.error('Payment could not be verified. If you were charged, contact support with ref: ' + response.reference);
+            setPayingWithPaystack(false);
+          }
         },
         onClose: () => {
           setPayingWithPaystack(false);
-          toast.info('Payment cancelled');
+          toast.info('Payment cancelled. You were not charged.');
         },
       });
 
       if (handler) {
         handler.openIframe();
       } else {
-        // Fallback: save without payment (Paystack script not loaded)
-        await saveParticipant(`MANUAL-${Date.now()}`);
+        toast.error('Payment system not loaded. Please refresh and try again.');
+        setPayingWithPaystack(false);
       }
     } catch (err: any) {
       toast.error(err.message || 'Payment failed');
