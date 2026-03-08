@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, MapPin, Phone, Mail, Plus, Trash2, Loader2, Edit2, Check, X, Package, Clock, Truck, CheckCircle, XCircle, RefreshCcw, ShoppingBag, Gift, Award, Copy } from 'lucide-react';
+import { User, MapPin, Phone, Mail, Plus, Trash2, Loader2, Edit2, Check, X, Package, Clock, Truck, CheckCircle, XCircle, RefreshCcw, ShoppingBag, Gift, Award, Copy, Cake } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +32,7 @@ interface Profile {
   name: string | null;
   email: string | null;
   phone: string | null;
+  birthday: string | null;
 }
 
 interface Address {
@@ -208,7 +209,7 @@ export default function Profile() {
   const navigate = useNavigate();
   const { formatPrice } = useCurrency();
   const { refundRequests, isLoading: refundsLoading } = useRefundRequests();
-  const [profile, setProfile] = useState<Profile>({ name: null, email: null, phone: null });
+  const [profile, setProfile] = useState<Profile>({ name: null, email: null, phone: null, birthday: null });
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -248,7 +249,7 @@ export default function Profile() {
   const fetchProfile = async () => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('name, email, phone')
+      .select('name, email, phone, birthday')
       .eq('user_id', user!.id)
       .maybeSingle();
 
@@ -301,7 +302,7 @@ export default function Profile() {
     setSaving(true);
     const { error } = await supabase
       .from('profiles')
-      .update({ name: profile.name, phone: profile.phone })
+      .update({ name: profile.name, phone: profile.phone, birthday: profile.birthday })
       .eq('user_id', user!.id);
 
     if (error) {
@@ -509,6 +510,25 @@ export default function Profile() {
                       />
                     ) : (
                       <p className="text-foreground">{profile.phone || 'Not set'}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Cake className="h-4 w-4" /> Birthday
+                    </Label>
+                    {editingProfile ? (
+                      <Input
+                        type="date"
+                        value={profile.birthday || ''}
+                        onChange={(e) => setProfile({ ...profile, birthday: e.target.value })}
+                        placeholder="Your birthday"
+                      />
+                    ) : (
+                      <p className="text-foreground">
+                        {profile.birthday
+                          ? new Date(profile.birthday).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+                          : 'Not set'}
+                      </p>
                     )}
                   </div>
                 </div>
