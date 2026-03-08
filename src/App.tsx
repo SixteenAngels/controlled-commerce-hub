@@ -13,6 +13,7 @@ import { AbandonedCartReminder } from "@/components/cart/AbandonedCartReminder";
 import { CookieConsent } from "@/components/CookieConsent";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WelcomeModal } from "@/components/onboarding/WelcomeModal";
+import { MaintenanceMode } from "@/components/MaintenanceMode";
 import { ThemeProvider } from "next-themes";
 import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
