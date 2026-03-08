@@ -348,6 +348,15 @@ export function AdminOrders() {
 
   return (
     <div>
+      {newOrderAlert && (
+        <Alert className="mb-4 border-green-500/50 bg-green-500/10">
+          <BellRing className="h-4 w-4 text-green-600" />
+          <AlertDescription className="flex items-center justify-between">
+            <span className="text-green-700 font-medium">New order received! The list has been updated.</span>
+            <Button variant="ghost" size="sm" onClick={() => setNewOrderAlert(false)}>Dismiss</Button>
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-3xl font-bold font-serif text-foreground">Orders Management</h1>
         <div className="flex flex-wrap items-center gap-2">
