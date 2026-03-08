@@ -1,7 +1,7 @@
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
-import { Construction } from 'lucide-react';
+import { Construction, Clock } from 'lucide-react';
 
 interface MaintenanceModeProps {
   children: React.ReactNode;
@@ -14,11 +14,16 @@ export function MaintenanceMode({ children }: MaintenanceModeProps) {
 
   if (isLoading) return <>{children}</>;
 
-  const maintenanceEnabled = settings?.maintenanceMode === true;
+  const now = new Date();
+  const manualEnabled = settings?.maintenanceMode === true;
+  const startTime = settings?.maintenanceStartTime ? new Date(settings.maintenanceStartTime as string) : null;
+  const endTime = settings?.maintenanceEndTime ? new Date(settings.maintenanceEndTime as string) : null;
+  const scheduledActive = startTime && endTime && now >= startTime && now <= endTime;
+
+  const maintenanceEnabled = manualEnabled || scheduledActive;
   const isAuthPage = location.pathname === '/auth';
   const isAdminPage = location.pathname.startsWith('/admin');
 
-  // Allow auth & admin pages through, and admins can browse everything
   if (maintenanceEnabled && !isAdmin && !isAuthPage && !isAdminPage) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 text-center">
@@ -29,6 +34,12 @@ export function MaintenanceMode({ children }: MaintenanceModeProps) {
         <p className="text-muted-foreground max-w-md mb-6">
           Our store is currently undergoing scheduled maintenance. We apologise for the inconvenience and will be back shortly.
         </p>
+        {scheduledActive && endTime && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+            <Clock className="h-4 w-4" />
+            <span>Expected back: {endTime.toLocaleString()}</span>
+          </div>
+        )}
         <p className="text-sm text-muted-foreground">
           If you're an admin, please{' '}
           <a href="/auth" className="text-primary underline">sign in</a>{' '}

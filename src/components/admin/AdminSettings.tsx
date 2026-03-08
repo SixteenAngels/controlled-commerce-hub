@@ -53,6 +53,8 @@ const DEFAULT_SETTINGS: SettingsState = {
   otpLength: 6,
   otpExpiryMinutes: 10,
   maintenanceMode: false,
+  maintenanceStartTime: '',
+  maintenanceEndTime: '',
   debugMode: false,
   loyaltyEnabled: true,
   loyaltyPointsPerOrder: 1,
@@ -232,6 +234,46 @@ export function AdminSettings() {
                   checked={settings.maintenanceMode}
                   onCheckedChange={(checked) => setSettings(prev => ({ ...prev, maintenanceMode: checked }))}
                 />
+              </div>
+
+              <div className="p-4 border border-border rounded-lg space-y-4">
+                <div>
+                  <Label className="text-sm font-medium">Scheduled Maintenance</Label>
+                  <p className="text-xs text-muted-foreground">Set a start and end time to automatically enable/disable maintenance mode</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="maint-start" className="text-xs">Start Time</Label>
+                    <Input
+                      id="maint-start"
+                      type="datetime-local"
+                      value={settings.maintenanceStartTime}
+                      onChange={(e) => setSettings(prev => ({ ...prev, maintenanceStartTime: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="maint-end" className="text-xs">End Time</Label>
+                    <Input
+                      id="maint-end"
+                      type="datetime-local"
+                      value={settings.maintenanceEndTime}
+                      onChange={(e) => setSettings(prev => ({ ...prev, maintenanceEndTime: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                {settings.maintenanceStartTime && settings.maintenanceEndTime && (
+                  <p className="text-xs text-muted-foreground">
+                    Maintenance will auto-activate from{' '}
+                    <strong>{new Date(settings.maintenanceStartTime).toLocaleString()}</strong> to{' '}
+                    <strong>{new Date(settings.maintenanceEndTime).toLocaleString()}</strong>.
+                    {new Date(settings.maintenanceEndTime) < new Date() && (
+                      <span className="text-destructive ml-1">This schedule has already passed.</span>
+                    )}
+                  </p>
+                )}
+                {settings.maintenanceStartTime && !settings.maintenanceEndTime && (
+                  <p className="text-xs text-destructive">Please set an end time for the schedule.</p>
+                )}
               </div>
               <div className="flex items-center justify-between">
                 <div>
