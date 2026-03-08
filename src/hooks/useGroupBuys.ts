@@ -5,8 +5,10 @@ import { ProductWithDetails } from './useProducts';
 export interface GroupBuyWithProduct {
   id: string;
   product_id: string;
+  title: string | null;
   current_participants: number | null;
   min_participants: number;
+  max_participants: number | null;
   discount_percentage: number | null;
   expires_at: string;
   status: string | null;
@@ -75,8 +77,10 @@ async function fetchGroupBuys(): Promise<GroupBuyWithProduct[]> {
     return {
       id: gb.id,
       product_id: gb.product_id,
+      title: (gb as any).title || null,
       current_participants: gb.current_participants,
       min_participants: gb.min_participants,
+      max_participants: (gb as any).max_participants || null,
       discount_percentage: gb.discount_percentage ? Number(gb.discount_percentage) : null,
       expires_at: gb.expires_at,
       status: gb.status,
