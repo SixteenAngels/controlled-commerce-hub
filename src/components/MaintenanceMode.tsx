@@ -1,5 +1,6 @@
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocation } from 'react-router-dom';
 import { Construction } from 'lucide-react';
 
 interface MaintenanceModeProps {
@@ -8,15 +9,17 @@ interface MaintenanceModeProps {
 
 export function MaintenanceMode({ children }: MaintenanceModeProps) {
   const { data: settings, isLoading } = useStoreSettings();
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
+  const location = useLocation();
 
-  // Don't block while loading settings
   if (isLoading) return <>{children}</>;
 
   const maintenanceEnabled = settings?.maintenanceMode === true;
+  const isAuthPage = location.pathname === '/auth';
+  const isAdminPage = location.pathname.startsWith('/admin');
 
-  // Admins can always browse; non-admins see the maintenance page
-  if (maintenanceEnabled && !isAdmin) {
+  // Allow auth & admin pages through, and admins can browse everything
+  if (maintenanceEnabled && !isAdmin && !isAuthPage && !isAdminPage) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 text-center">
         <div className="inline-flex p-5 rounded-full bg-primary/10 mb-6">
