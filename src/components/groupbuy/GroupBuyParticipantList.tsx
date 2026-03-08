@@ -25,7 +25,7 @@ interface Participant {
   variant: {
     color: string | null;
     size: string | null;
-  } | null;
+  } | null | undefined;
 }
 
 export function GroupBuyParticipantList({ groupBuyId }: GroupBuyParticipantListProps) {
@@ -57,9 +57,10 @@ export function GroupBuyParticipantList({ groupBuyId }: GroupBuyParticipantListP
         : { data: [] };
 
       const profileMap = new Map(profiles?.map((p) => [p.user_id, p]));
-      const variantMap = new Map(variants?.map((v) => [v.id, v]));
+      const variantMap = new Map<string, { id: string; color: string | null; size: string | null }>();
+      variants?.forEach((v) => variantMap.set(v.id, v));
 
-      return (data || []).map((p) => ({
+      return (data || []).map((p): Participant => ({
         ...p,
         profile: profileMap.get(p.user_id) || null,
         variant: p.variant_id ? variantMap.get(p.variant_id) || null : null,
@@ -77,9 +78,9 @@ export function GroupBuyParticipantList({ groupBuyId }: GroupBuyParticipantListP
 
   const getPaymentBadge = (status: string | null) => {
     switch (status) {
-      case 'paid': return <Badge className="bg-green-100 text-green-800">Paid</Badge>;
-      case 'pending': return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
-      case 'refunded': return <Badge className="bg-red-100 text-red-800">Refunded</Badge>;
+      case 'paid': return <Badge className="bg-primary/10 text-primary">Paid</Badge>;
+      case 'pending': return <Badge className="bg-accent/10 text-accent-foreground">Pending</Badge>;
+      case 'refunded': return <Badge className="bg-destructive/10 text-destructive">Refunded</Badge>;
       default: return <Badge variant="secondary">{status || 'Unknown'}</Badge>;
     }
   };
