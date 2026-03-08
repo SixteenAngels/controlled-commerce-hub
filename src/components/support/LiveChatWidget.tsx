@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +20,7 @@ interface Message {
 
 export function LiveChatWidget() {
   const { user } = useAuth();
+  const { isEnabled } = useFeatureFlags();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -155,7 +157,7 @@ export function LiveChatWidget() {
     }
   };
 
-  if (!user) {
+  if (!user || !isEnabled('live_chat')) {
     return null;
   }
 

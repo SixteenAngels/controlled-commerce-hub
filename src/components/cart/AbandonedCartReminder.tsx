@@ -1,11 +1,13 @@
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { Button } from '@/components/ui/button';
 import { ShoppingCart, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 
 export function AbandonedCartReminder() {
+  const { isEnabled } = useFeatureFlags();
   const { totalItems } = useCart();
   const { user } = useAuth();
   const [dismissed, setDismissed] = useState(false);
@@ -19,7 +21,7 @@ export function AbandonedCartReminder() {
     setShow(false);
   }, [totalItems, user, dismissed]);
 
-  if (!show) return null;
+  if (!show || !isEnabled('abandoned_cart')) return null;
 
   return (
     <div className="fixed bottom-20 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-80 z-40 animate-in slide-in-from-bottom-4">

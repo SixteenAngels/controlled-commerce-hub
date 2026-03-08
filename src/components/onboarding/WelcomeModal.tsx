@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { MapPin, Heart, Bell, Check, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 const INTERESTS = [
   'Electronics', 'Fashion', 'Beauty', 'Home & Kitchen', 'Sports',
@@ -23,6 +24,7 @@ const REGIONS = [
 
 export function WelcomeModal() {
   const { user } = useAuth();
+  const { isEnabled } = useFeatureFlags();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [region, setRegion] = useState('');
@@ -60,7 +62,7 @@ export function WelcomeModal() {
     );
   };
 
-  if (!user) return null;
+  if (!user || !isEnabled('welcome_modal')) return null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

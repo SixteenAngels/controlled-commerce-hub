@@ -1,16 +1,18 @@
 import { useCompare } from '@/contexts/CompareContext';
 import { useProducts } from '@/hooks/useProducts';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { Button } from '@/components/ui/button';
 import { X, GitCompare } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function CompareBar() {
+  const { isEnabled } = useFeatureFlags();
   const { compareItems, removeFromCompare, clearCompare } = useCompare();
   const { data: allProducts } = useProducts();
 
   const products = allProducts?.filter(p => compareItems.includes(p.id)) || [];
 
-  if (compareItems.length === 0) return null;
+  if (compareItems.length === 0 || !isEnabled('compare')) return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-50 p-4">

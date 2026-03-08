@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Star, User, Check, Loader2, Camera } from 'lucide-react';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,6 +34,9 @@ interface ProductReviewsProps {
 
 export function ProductReviews({ productId, productName }: ProductReviewsProps) {
   const { user } = useAuth();
+  const { isEnabled } = useFeatureFlags();
+
+  if (!isEnabled('reviews')) return null;
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [canReview, setCanReview] = useState(false);
