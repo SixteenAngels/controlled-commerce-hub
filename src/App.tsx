@@ -10,26 +10,44 @@ import { CompareBar } from "@/components/compare/CompareBar";
 import { MobileNavBar } from "@/components/layout/MobileNavBar";
 import { LiveChatWidget } from "@/components/support/LiveChatWidget";
 import { AbandonedCartReminder } from "@/components/cart/AbandonedCartReminder";
+import { CookieConsent } from "@/components/CookieConsent";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { WelcomeModal } from "@/components/onboarding/WelcomeModal";
 import { ThemeProvider } from "next-themes";
-import Index from "./pages/Index";
-import Products from "./pages/Products";
-import ProductDetail from "./pages/ProductDetail";
-import Cart from "./pages/Cart";
-import Checkout from "./pages/Checkout";
-import OrderConfirmation from "./pages/OrderConfirmation";
-import MyOrders from "./pages/MyOrders";
-import GroupBuys from "./pages/GroupBuys";
-import Categories from "./pages/Categories";
-import Auth from "./pages/Auth";
-import Admin from "./pages/Admin";
-import TrackOrder from "./pages/TrackOrder";
-import Profile from "./pages/Profile";
-import Wishlist from "./pages/Wishlist";
-import Compare from "./pages/Compare";
-import Help from "./pages/Help";
-import NotFound from "./pages/NotFound";
+import { lazy, Suspense } from "react";
+import { Loader2 } from "lucide-react";
+
+// Lazy load all pages for code splitting
+const Index = lazy(() => import("./pages/Index"));
+const Products = lazy(() => import("./pages/Products"));
+const ProductDetail = lazy(() => import("./pages/ProductDetail"));
+const Cart = lazy(() => import("./pages/Cart"));
+const Checkout = lazy(() => import("./pages/Checkout"));
+const OrderConfirmation = lazy(() => import("./pages/OrderConfirmation"));
+const MyOrders = lazy(() => import("./pages/MyOrders"));
+const GroupBuys = lazy(() => import("./pages/GroupBuys"));
+const Categories = lazy(() => import("./pages/Categories"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Admin = lazy(() => import("./pages/Admin"));
+const TrackOrder = lazy(() => import("./pages/TrackOrder"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Wishlist = lazy(() => import("./pages/Wishlist"));
+const Compare = lazy(() => import("./pages/Compare"));
+const Help = lazy(() => import("./pages/Help"));
+const FlashDeals = lazy(() => import("./pages/FlashDeals"));
+const DeliveryZones = lazy(() => import("./pages/DeliveryZones"));
+const CustomsDutyEstimator = lazy(() => import("./pages/CustomsDutyEstimator"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
 
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
@@ -38,34 +56,43 @@ const App = () => (
         <AuthProvider>
           <CartProvider>
             <CompareProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/products" element={<Products />} />
-                  <Route path="/product/:id" element={<ProductDetail />} />
-                  <Route path="/cart" element={<Cart />} />
-                  <Route path="/checkout" element={<Checkout />} />
-                  <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
-                  <Route path="/my-orders" element={<MyOrders />} />
-                  <Route path="/group-buys" element={<GroupBuys />} />
-                  <Route path="/categories" element={<Categories />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/admin/*" element={<Admin />} />
-                  <Route path="/track-order" element={<TrackOrder />} />
-                  <Route path="/track-order/:orderId" element={<TrackOrder />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/wishlist" element={<Wishlist />} />
-                  <Route path="/compare" element={<Compare />} />
-                  <Route path="/help" element={<Help />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <CompareBar />
-                <MobileNavBar />
-                <LiveChatWidget />
-                <AbandonedCartReminder />
-              </BrowserRouter>
+              <ErrorBoundary>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Suspense fallback={<PageLoader />}>
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/products" element={<Products />} />
+                      <Route path="/product/:id" element={<ProductDetail />} />
+                      <Route path="/cart" element={<Cart />} />
+                      <Route path="/checkout" element={<Checkout />} />
+                      <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+                      <Route path="/my-orders" element={<MyOrders />} />
+                      <Route path="/group-buys" element={<GroupBuys />} />
+                      <Route path="/categories" element={<Categories />} />
+                      <Route path="/auth" element={<Auth />} />
+                      <Route path="/admin/*" element={<Admin />} />
+                      <Route path="/track-order" element={<TrackOrder />} />
+                      <Route path="/track-order/:orderId" element={<TrackOrder />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/wishlist" element={<Wishlist />} />
+                      <Route path="/compare" element={<Compare />} />
+                      <Route path="/help" element={<Help />} />
+                      <Route path="/flash-deals" element={<FlashDeals />} />
+                      <Route path="/delivery-zones" element={<DeliveryZones />} />
+                      <Route path="/customs-estimator" element={<CustomsDutyEstimator />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </Suspense>
+                  <CompareBar />
+                  <MobileNavBar />
+                  <LiveChatWidget />
+                  <AbandonedCartReminder />
+                  <WelcomeModal />
+                  <CookieConsent />
+                </BrowserRouter>
+              </ErrorBoundary>
             </CompareProvider>
           </CartProvider>
         </AuthProvider>

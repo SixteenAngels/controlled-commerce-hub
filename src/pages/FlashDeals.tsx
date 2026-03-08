@@ -7,6 +7,7 @@ import { ProductCard } from '@/components/products/ProductCard';
 import { Badge } from '@/components/ui/badge';
 import { Zap, Clock, Loader2 } from 'lucide-react';
 import { useCurrency } from '@/hooks/useCurrency';
+import { Product } from '@/types';
 
 function CountdownTimer({ endsAt }: { endsAt: string }) {
   const [timeLeft, setTimeLeft] = useState('');
@@ -70,6 +71,35 @@ export default function FlashDeals() {
     },
   });
 
+  const toProduct = (p: any): Product => {
+    const images = (p.product_images || [])
+      .sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
+      .map((img: any) => img.image_url);
+    const variants = (p.product_variants || []).filter((v: any) => v.is_active);
+
+    return {
+      id: p.id,
+      name: p.name,
+      description: p.description || '',
+      category: p.categories?.name || 'Uncategorized',
+      basePrice: p.base_price,
+      images: images.length > 0 ? images : ['/placeholder.svg'],
+      variants: variants.map((v: any) => ({
+        id: v.id,
+        size: v.size || undefined,
+        color: v.color || undefined,
+        price: v.price_override || p.base_price,
+        stock: v.stock || 0,
+      })),
+      shippingOptions: [],
+      isGroupBuyEligible: p.is_group_buy_eligible || false,
+      isFlashDeal: true,
+      isFreeShippingEligible: p.is_free_shipping || false,
+      rating: p.rating || 0,
+      reviewCount: p.review_count || 0,
+    };
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -95,35 +125,16 @@ export default function FlashDeals() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {flashProducts.map((product: any) => {
-              const images = (product.product_images || [])
-                .sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
-                .map((img: any) => img.image_url);
-              const variants = (product.product_variants || []).filter((v: any) => v.is_active);
-              const minPrice = variants.length > 0
-                ? Math.min(...variants.map((v: any) => v.price_override || product.base_price))
-                : product.base_price;
-
-              return (
-                <div key={product.id} className="relative">
-                  {product.flash_deal_ends_at && (
-                    <div className="absolute top-2 right-2 z-10">
-                      <CountdownTimer endsAt={product.flash_deal_ends_at} />
-                    </div>
-                  )}
-                  <ProductCard
-                    id={product.id}
-                    name={product.name}
-                    price={minPrice}
-                    image={images[0] || '/placeholder.svg'}
-                    category={product.categories?.name || 'Uncategorized'}
-                    isFlashDeal={true}
-                    rating={product.rating || 0}
-                    reviewCount={product.review_count || 0}
-                  />
-                </div>
-              );
-            })}
+            {flashProducts.map((p: any) => (
+              <div key={p.id} className="relative">
+                {p.flash_deal_ends_at && (
+                  <div className="absolute top-2 right-2 z-10">
+                    <CountdownTimer endsAt={p.flash_deal_ends_at} />
+                  </div>
+                )}
+                <ProductCard product={toProduct(p)} />
+              </div>
+            ))}
           </div>
         )}
       </main>
