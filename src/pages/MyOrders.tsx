@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, Truck, MapPin, Clock, CheckCircle, XCircle, Loader, ChevronDown, ChevronUp, Phone, CreditCard, ShoppingBag, PackageCheck, Plane, MapPinned, Ban } from 'lucide-react';
+import { Package, Truck, MapPin, Clock, CheckCircle, XCircle, Loader, ChevronDown, ChevronUp, Phone, CreditCard, ShoppingBag, PackageCheck, Plane, MapPinned, Ban, Users } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -260,6 +260,12 @@ export default function MyOrders() {
                             </div>
                             <div className="flex items-center gap-3">
                               {getStatusBadge(order.status)}
+                              {(order as any).group_buy_id && (
+                                <Badge className="bg-accent/10 text-accent-foreground gap-1">
+                                  <Users className="h-3 w-3" />
+                                  Group Buy
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         </div>
