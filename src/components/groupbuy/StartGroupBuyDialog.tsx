@@ -113,19 +113,30 @@ export function StartGroupBuyDialog({ product }: StartGroupBuyDialogProps) {
         ref: reference,
         metadata: { type: 'group_buy_start', product_id: product.id, user_id: user.id },
         callback: async (response: any) => {
-          await createGroupBuy(response.reference);
+          // Verify payment server-side before creating group buy
+          const { data: verification } = await supabase.functions.invoke(
+            'verify-paystack-payment',
+            { body: { reference: response.reference } }
+          );
+
+          if (verification?.verified) {
+            await createGroupBuy(response.reference);
+          } else {
+            toast.error('Payment could not be verified. If you were charged, contact support with ref: ' + response.reference);
+            setIsPaying(false);
+          }
         },
         onClose: () => {
           setIsPaying(false);
-          toast.info('Payment cancelled');
+          toast.info('Payment cancelled. You were not charged.');
         },
       });
 
       if (handler) {
         handler.openIframe();
       } else {
-        // Fallback without Paystack
-        await createGroupBuy(`MANUAL-${Date.now()}`);
+        toast.error('Payment system not loaded. Please refresh and try again.');
+        setIsPaying(false);
       }
     } catch (err: any) {
       toast.error(err.message || 'Payment failed');
