@@ -64,6 +64,18 @@ export function AdminDashboard() {
     },
   });
 
+  const { data: revenueGoal } = useQuery({
+    queryKey: ['admin-revenue-goal'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('store_settings')
+        .select('value')
+        .eq('key', 'revenue_goal')
+        .maybeSingle();
+      return (data?.value as number) || 50000;
+    },
+  });
+
   const orderStats = useMemo(() => {
     if (!orders) return { total: 0, pending: 0, delivered: 0, totalRevenue: 0 };
     return {
