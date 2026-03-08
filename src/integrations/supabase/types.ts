@@ -438,6 +438,44 @@ export type Database = {
           },
         ]
       }
+      loyalty_points: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          order_id: string | null
+          points: number
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          order_id?: string | null
+          points: number
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          order_id?: string | null
+          points?: number
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_points_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -653,6 +691,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "product_images_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_questions: {
+        Row: {
+          answer: string | null
+          answered_at: string | null
+          answered_by: string | null
+          created_at: string
+          id: string
+          is_published: boolean | null
+          product_id: string
+          question: string
+          user_id: string
+        }
+        Insert: {
+          answer?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean | null
+          product_id: string
+          question: string
+          user_id: string
+        }
+        Update: {
+          answer?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean | null
+          product_id?: string
+          question?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_questions_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
@@ -918,6 +1000,51 @@ export type Database = {
           },
         ]
       }
+      referral_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          total_referrals: number | null
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          total_referrals?: number | null
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          total_referrals?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      referral_tracking: {
+        Row: {
+          created_at: string
+          id: string
+          referred_user_id: string
+          referrer_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referred_user_id: string
+          referrer_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referred_user_id?: string
+          referrer_id?: string
+        }
+        Relationships: []
+      }
       refund_requests: {
         Row: {
           admin_notes: string | null
@@ -965,9 +1092,12 @@ export type Database = {
       }
       reviews: {
         Row: {
+          admin_response: string | null
+          admin_response_at: string | null
           comment: string | null
           created_at: string
           id: string
+          image_url: string | null
           is_approved: boolean | null
           is_verified: boolean | null
           order_id: string | null
@@ -978,9 +1108,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          admin_response?: string | null
+          admin_response_at?: string | null
           comment?: string | null
           created_at?: string
           id?: string
+          image_url?: string | null
           is_approved?: boolean | null
           is_verified?: boolean | null
           order_id?: string | null
@@ -991,9 +1124,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          admin_response?: string | null
+          admin_response_at?: string | null
           comment?: string | null
           created_at?: string
           id?: string
+          image_url?: string | null
           is_approved?: boolean | null
           is_verified?: boolean | null
           order_id?: string | null
