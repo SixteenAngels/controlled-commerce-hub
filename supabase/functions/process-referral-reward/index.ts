@@ -71,16 +71,42 @@ Deno.serve(async (req) => {
       .update({ total_referrals: (codeData.total_referrals || 0) + 1 })
       .eq('id', codeData.id);
 
+    // Check if referral programme is enabled
+    const { data: enabledSetting } = await supabase
+      .from('store_settings')
+      .select('value')
+      .eq('key', 'referralEnabled')
+      .maybeSingle();
+
+    if (enabledSetting?.value === false) {
+      return new Response(JSON.stringify({ message: 'Referral programme disabled' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Read reward settings from store_settings
+    const { data: settingsRows } = await supabase
+      .from('store_settings')
+      .select('key, value')
+      .in('key', ['referral_discount_percent', 'referral_max_uses', 'referral_expiry_days']);
+
+    const settings: Record<string, any> = {};
+    settingsRows?.forEach((r: any) => { settings[r.key] = r.value; });
+
+    const discountPercent = typeof settings.referral_discount_percent === 'number' ? settings.referral_discount_percent : 10;
+    const maxUses = typeof settings.referral_max_uses === 'number' ? settings.referral_max_uses : 1;
+    const expiryDays = typeof settings.referral_expiry_days === 'number' ? settings.referral_expiry_days : 14;
+
     // Create a referral reward coupon for the referrer
     const couponCode = `REF-${Date.now().toString(36).toUpperCase()}`;
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
+    expiresAt.setDate(expiresAt.getDate() + expiryDays);
 
     await supabase.from('coupons').insert({
       code: couponCode,
       type: 'percentage',
-      value: 10,
-      max_uses: 1,
+      value: discountPercent,
+      max_uses: maxUses,
       current_uses: 0,
       is_active: true,
       expires_at: expiresAt.toISOString(),
@@ -90,7 +116,7 @@ Deno.serve(async (req) => {
     await supabase.from('notifications').insert({
       user_id: codeData.user_id,
       title: '🎉 Referral Reward!',
-      message: `Someone signed up with your referral code! Use ${couponCode} for 10% off your next order. Valid for 30 days.`,
+      message: `Someone signed up with your referral code! Use ${couponCode} for ${discountPercent}% off your next order. Valid for ${expiryDays} days.`,
       type: 'promotion',
       data: { coupon_code: couponCode },
     });
