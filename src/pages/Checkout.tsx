@@ -48,6 +48,7 @@ interface Coupon {
   type: 'percentage' | 'fixed';
   value: number;
   min_order_amount: number | null;
+  current_uses: number;
 }
 
 declare global {
