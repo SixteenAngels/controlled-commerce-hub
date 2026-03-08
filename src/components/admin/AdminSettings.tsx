@@ -20,6 +20,8 @@ interface SettingsState {
   otpLength: number;
   otpExpiryMinutes: number;
   maintenanceMode: boolean;
+  maintenanceStartTime: string;
+  maintenanceEndTime: string;
   debugMode: boolean;
   loyaltyEnabled: boolean;
   loyaltyPointsPerOrder: number;
