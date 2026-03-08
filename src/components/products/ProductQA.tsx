@@ -17,8 +17,6 @@ interface ProductQAProps {
 export function ProductQA({ productId }: ProductQAProps) {
   const { user } = useAuth();
   const { isEnabled } = useFeatureFlags();
-
-  if (!isEnabled('qa')) return null;
   const queryClient = useQueryClient();
   const [question, setQuestion] = useState('');
   const [showForm, setShowForm] = useState(false);
