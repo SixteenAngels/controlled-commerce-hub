@@ -86,6 +86,8 @@ export function AdminDashboard() {
     };
   }, [orders]);
 
+  const revenueProgress = revenueGoal ? Math.min((orderStats.totalRevenue / (revenueGoal as number)) * 100, 100) : 0;
+
   // Revenue by month (last 6 months)
   const revenueByMonth = useMemo(() => {
     if (!orders) return [];
