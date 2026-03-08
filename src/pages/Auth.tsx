@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Header } from '@/components/layout/Header';
@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Loader2, Mail, Lock, User, ArrowLeft, RefreshCw } from 'lucide-react';
 import { z } from 'zod';
+import { supabase } from '@/integrations/supabase/client';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -47,6 +48,18 @@ export default function Auth() {
       setShowResetPassword(true);
     }
   }, [searchParams]);
+
+  // Process referral after signup + login
+  const referralProcessed = useRef(false);
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (user && ref && !referralProcessed.current) {
+      referralProcessed.current = true;
+      supabase.functions.invoke('process-referral-reward', {
+        body: { referral_code: ref, referred_user_id: user.id },
+      }).catch((err) => console.error('Referral processing error:', err));
+    }
+  }, [user, searchParams]);
 
   // Redirect if already logged in (unless resetting password)
   useEffect(() => {
