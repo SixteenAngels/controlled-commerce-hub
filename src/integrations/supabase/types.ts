@@ -349,6 +349,42 @@ export type Database = {
         }
         Relationships: []
       }
+      gift_cards: {
+        Row: {
+          balance: number
+          code: string
+          created_at: string | null
+          created_by: string
+          expires_at: string | null
+          id: string
+          initial_value: number
+          is_active: boolean | null
+          redeemed_by: string | null
+        }
+        Insert: {
+          balance: number
+          code: string
+          created_at?: string | null
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          initial_value: number
+          is_active?: boolean | null
+          redeemed_by?: string | null
+        }
+        Update: {
+          balance?: number
+          code?: string
+          created_at?: string | null
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          initial_value?: number
+          is_active?: boolean | null
+          redeemed_by?: string | null
+        }
+        Relationships: []
+      }
       group_buy_participants: {
         Row: {
           group_buy_id: string
@@ -666,6 +702,74 @@ export type Database = {
           },
         ]
       }
+      price_drop_alerts: {
+        Row: {
+          created_at: string | null
+          id: string
+          product_id: string | null
+          target_price: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          product_id?: string | null
+          target_price?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          product_id?: string | null
+          target_price?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_drop_alerts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_bundles: {
+        Row: {
+          bundled_product_id: string | null
+          created_at: string | null
+          id: string
+          product_id: string | null
+        }
+        Insert: {
+          bundled_product_id?: string | null
+          created_at?: string | null
+          id?: string
+          product_id?: string | null
+        }
+        Update: {
+          bundled_product_id?: string | null
+          created_at?: string | null
+          id?: string
+          product_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_bundles_bundled_product_id_fkey"
+            columns: ["bundled_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_bundles_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_images: {
         Row: {
           created_at: string
@@ -840,6 +944,7 @@ export type Database = {
           category_id: string | null
           created_at: string
           description: string | null
+          flash_deal_ends_at: string | null
           id: string
           is_active: boolean | null
           is_flash_deal: boolean | null
@@ -858,6 +963,7 @@ export type Database = {
           category_id?: string | null
           created_at?: string
           description?: string | null
+          flash_deal_ends_at?: string | null
           id?: string
           is_active?: boolean | null
           is_flash_deal?: boolean | null
@@ -876,6 +982,7 @@ export type Database = {
           category_id?: string | null
           created_at?: string
           description?: string | null
+          flash_deal_ends_at?: string | null
           id?: string
           is_active?: boolean | null
           is_flash_deal?: boolean | null
@@ -902,6 +1009,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          birthday: string | null
           created_at: string
           email: string | null
           google_id: string | null
@@ -913,6 +1021,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          birthday?: string | null
           created_at?: string
           email?: string | null
           google_id?: string | null
@@ -924,6 +1033,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          birthday?: string | null
           created_at?: string
           email?: string | null
           google_id?: string | null
@@ -1155,6 +1265,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      saved_searches: {
+        Row: {
+          created_at: string | null
+          filters: Json
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          filters?: Json
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          filters?: Json
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       shipping_classes: {
         Row: {
