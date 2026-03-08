@@ -9,6 +9,7 @@ import { CompareProvider } from "@/contexts/CompareContext";
 import { CompareBar } from "@/components/compare/CompareBar";
 import { MobileNavBar } from "@/components/layout/MobileNavBar";
 import { LiveChatWidget } from "@/components/support/LiveChatWidget";
+import { AbandonedCartReminder } from "@/components/cart/AbandonedCartReminder";
 import { ThemeProvider } from "next-themes";
 import Index from "./pages/Index";
 import Products from "./pages/Products";
@@ -63,6 +64,7 @@ const App = () => (
                 <CompareBar />
                 <MobileNavBar />
                 <LiveChatWidget />
+                <AbandonedCartReminder />
               </BrowserRouter>
             </CompareProvider>
           </CartProvider>
