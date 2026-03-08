@@ -192,6 +192,8 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
       : 0,
   }));
 
+  if (!isEnabled('reviews')) return null;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
