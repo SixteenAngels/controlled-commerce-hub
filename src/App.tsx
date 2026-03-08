@@ -62,38 +62,40 @@ const App = () => (
                 <Toaster />
                 <Sonner />
                 <BrowserRouter>
-                  <Suspense fallback={<PageLoader />}>
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/products" element={<Products />} />
-                      <Route path="/product/:id" element={<ProductDetail />} />
-                      <Route path="/cart" element={<Cart />} />
-                      <Route path="/checkout" element={<Checkout />} />
-                      <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
-                      <Route path="/my-orders" element={<MyOrders />} />
-                      <Route path="/group-buys" element={<GroupBuys />} />
-                      <Route path="/group-buy/:id" element={<GroupBuyDetail />} />
-                      <Route path="/categories" element={<Categories />} />
-                      <Route path="/auth" element={<Auth />} />
-                      <Route path="/admin/*" element={<Admin />} />
-                      <Route path="/track-order" element={<TrackOrder />} />
-                      <Route path="/track-order/:orderId" element={<TrackOrder />} />
-                      <Route path="/profile" element={<Profile />} />
-                      <Route path="/wishlist" element={<Wishlist />} />
-                      <Route path="/compare" element={<Compare />} />
-                      <Route path="/help" element={<Help />} />
-                      <Route path="/flash-deals" element={<FlashDeals />} />
-                      <Route path="/delivery-zones" element={<DeliveryZones />} />
-                      <Route path="/customs-estimator" element={<CustomsDutyEstimator />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </Suspense>
-                  <CompareBar />
-                  <MobileNavBar />
-                  <LiveChatWidget />
-                  <AbandonedCartReminder />
-                  <WelcomeModal />
-                  <CookieConsent />
+                  <MaintenanceMode>
+                    <Suspense fallback={<PageLoader />}>
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/products" element={<Products />} />
+                        <Route path="/product/:id" element={<ProductDetail />} />
+                        <Route path="/cart" element={<Cart />} />
+                        <Route path="/checkout" element={<Checkout />} />
+                        <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+                        <Route path="/my-orders" element={<MyOrders />} />
+                        <Route path="/group-buys" element={<GroupBuys />} />
+                        <Route path="/group-buy/:id" element={<GroupBuyDetail />} />
+                        <Route path="/categories" element={<Categories />} />
+                        <Route path="/auth" element={<Auth />} />
+                        <Route path="/admin/*" element={<Admin />} />
+                        <Route path="/track-order" element={<TrackOrder />} />
+                        <Route path="/track-order/:orderId" element={<TrackOrder />} />
+                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/wishlist" element={<Wishlist />} />
+                        <Route path="/compare" element={<Compare />} />
+                        <Route path="/help" element={<Help />} />
+                        <Route path="/flash-deals" element={<FlashDeals />} />
+                        <Route path="/delivery-zones" element={<DeliveryZones />} />
+                        <Route path="/customs-estimator" element={<CustomsDutyEstimator />} />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </Suspense>
+                    <CompareBar />
+                    <MobileNavBar />
+                    <LiveChatWidget />
+                    <AbandonedCartReminder />
+                    <WelcomeModal />
+                    <CookieConsent />
+                  </MaintenanceMode>
                 </BrowserRouter>
               </ErrorBoundary>
             </CompareProvider>
