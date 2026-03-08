@@ -774,6 +774,16 @@ export default function Profile() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Referral Tab */}
+          <TabsContent value="referral">
+            <ReferralTab />
+          </TabsContent>
+
+          {/* Loyalty Tab */}
+          <TabsContent value="loyalty">
+            <LoyaltyTab />
+          </TabsContent>
         </Tabs>
       </main>
       <Footer />
