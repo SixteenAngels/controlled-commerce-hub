@@ -556,6 +556,27 @@ export default function Checkout() {
         console.error('Loyalty points error (non-blocking):', loyaltyErr);
       }
 
+      // Notify all admins/managers about the new order
+      try {
+        const { data: adminRoles } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .in('role', ['admin', 'manager']);
+
+        if (adminRoles && adminRoles.length > 0) {
+          const adminNotifications = adminRoles.map(r => ({
+            user_id: r.user_id,
+            title: '🛍️ New Order Received',
+            message: `Order ${order.order_number} — ${formatPrice(total)} placed.`,
+            type: 'new_order',
+            data: { orderId: order.id, orderNumber: order.order_number, total },
+          }));
+          await supabase.from('notifications').insert(adminNotifications);
+        }
+      } catch (notifErr) {
+        console.error('Admin notification error (non-blocking):', notifErr);
+      }
+
       // Fix #6: clearCart only after ALL DB writes succeed
       setPendingPaymentRef(null);
       clearCart();
