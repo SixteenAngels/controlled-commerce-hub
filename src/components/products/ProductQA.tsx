@@ -54,6 +54,8 @@ export function ProductQA({ productId }: ProductQAProps) {
     onError: () => toast.error('Failed to submit question'),
   });
 
+  if (!isEnabled('qa')) return null;
+
   return (
     <Card>
       <CardHeader>

@@ -14,8 +14,6 @@ interface Props {
 export function PriceDropAlert({ productId }: Props) {
   const { user } = useAuth();
   const { isEnabled } = useFeatureFlags();
-
-  if (!isEnabled('price_drop_alerts')) return null;
   const queryClient = useQueryClient();
 
   const { data: alert } = useQuery({
@@ -56,7 +54,7 @@ export function PriceDropAlert({ productId }: Props) {
     onError: () => toast.error('Failed to update alert'),
   });
 
-  if (!user) return null;
+  if (!user || !isEnabled('price_drop_alerts')) return null;
 
   return (
     <Button

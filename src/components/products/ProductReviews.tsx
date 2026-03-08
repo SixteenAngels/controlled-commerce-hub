@@ -35,8 +35,6 @@ interface ProductReviewsProps {
 export function ProductReviews({ productId, productName }: ProductReviewsProps) {
   const { user } = useAuth();
   const { isEnabled } = useFeatureFlags();
-
-  if (!isEnabled('reviews')) return null;
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [canReview, setCanReview] = useState(false);
