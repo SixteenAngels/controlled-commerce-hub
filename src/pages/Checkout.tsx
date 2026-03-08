@@ -73,7 +73,7 @@ export default function Checkout() {
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [pendingPaymentRef, setPendingPaymentRef] = useState<string | null>(null);
   const [showPaymentRecovery, setShowPaymentRecovery] = useState(false);
-  const [callbackFired, setCallbackFired] = useState(false);
+  const callbackFiredRef = useRef(false);
   const [orderCreationInProgress, setOrderCreationInProgress] = useState(false);
   const [newAddress, setNewAddress] = useState({
     full_name: '',
