@@ -1,4 +1,4 @@
-import { Bell, Check, CheckCheck, Package, Tag, MessageCircle, Info } from 'lucide-react';
+import { Bell, Check, CheckCheck, Package, Tag, MessageCircle, Info, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -22,6 +22,8 @@ export function NotificationBell() {
     switch (type) {
       case 'order_status':
         return <Package className="h-4 w-4" />;
+      case 'new_order':
+        return <ShoppingBag className="h-4 w-4" />;
       case 'promotion':
         return <Tag className="h-4 w-4" />;
       case 'message':
@@ -35,6 +37,8 @@ export function NotificationBell() {
     switch (type) {
       case 'order_status':
         return 'bg-primary/10 text-primary';
+      case 'new_order':
+        return 'bg-green-500/10 text-green-600';
       case 'promotion':
         return 'bg-accent/10 text-accent-foreground';
       case 'message':
