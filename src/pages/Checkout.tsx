@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Plus, Ship, Plane, Package, CreditCard, Check, Tag, X } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
@@ -48,6 +48,7 @@ interface Coupon {
   type: 'percentage' | 'fixed';
   value: number;
   min_order_amount: number | null;
+  current_uses: number;
 }
 
 declare global {
@@ -73,6 +74,8 @@ export default function Checkout() {
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [pendingPaymentRef, setPendingPaymentRef] = useState<string | null>(null);
   const [showPaymentRecovery, setShowPaymentRecovery] = useState(false);
+  const callbackFiredRef = useRef(false);
+  const [orderCreationInProgress, setOrderCreationInProgress] = useState(false);
   const [newAddress, setNewAddress] = useState({
     full_name: '',
     phone: '',
@@ -369,6 +372,7 @@ export default function Checkout() {
 
       const reference = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       setPendingPaymentRef(reference);
+      callbackFiredRef.current = false;
 
       const handler = window.PaystackPop.setup({
         key: configData.publicKey,
@@ -377,6 +381,7 @@ export default function Checkout() {
         currency: 'GHS',
         ref: reference,
         callback: function(response: { reference: string }) {
+          callbackFiredRef.current = true;
           verifyAndCreateOrder(response.reference).catch((err) => {
             console.error('Order creation error:', err);
             toast.error('Order creation failed. Please contact support with ref: ' + response.reference);
@@ -384,11 +389,17 @@ export default function Checkout() {
           });
         },
         onClose: function() {
-          setIsProcessing(false);
-          // Show recovery dialog instead of just a toast
-          if (pendingPaymentRef) {
-            setShowPaymentRecovery(true);
-          }
+          // Only show cancel UI if callback never fired (genuine cancel)
+          // Paystack fires onClose AFTER callback on success — ignore it then
+          setTimeout(() => {
+            // Use a small delay to let callback set the flag first
+            if (!callbackFiredRef.current) {
+              setIsProcessing(false);
+              if (pendingPaymentRef) {
+                setShowPaymentRecovery(true);
+              }
+            }
+          }, 500);
         },
       });
 
@@ -401,10 +412,17 @@ export default function Checkout() {
   };
 
   const verifyAndCreateOrder = async (paymentReference: string) => {
+    // Fix #8: Duplicate order guard
+    if (orderCreationInProgress) {
+      console.warn('Order creation already in progress, ignoring duplicate call');
+      return;
+    }
+    setOrderCreationInProgress(true);
+
     const selectedAddress = addresses.find(a => a.id === selectedAddressId);
     
     try {
-      // Step 1: Server-side verification
+      // Step 1: Server-side verification (Fix #1)
       const { data: verification, error: verifyError } = await supabase.functions.invoke(
         'verify-paystack-payment',
         { body: { reference: paymentReference } }
@@ -414,6 +432,7 @@ export default function Checkout() {
         console.error('Verification call failed:', verifyError);
         toast.error('Payment verification failed. Contact support with ref: ' + paymentReference);
         setIsProcessing(false);
+        setOrderCreationInProgress(false);
         return;
       }
 
@@ -421,6 +440,7 @@ export default function Checkout() {
         console.error('Payment not verified:', verification);
         toast.error('Payment could not be confirmed. If you were charged, contact support with ref: ' + paymentReference);
         setIsProcessing(false);
+        setOrderCreationInProgress(false);
         return;
       }
 
@@ -430,10 +450,26 @@ export default function Checkout() {
         console.error(`Amount mismatch: expected ${expectedAmount}, got ${verification.amount}`);
         toast.error('Payment amount mismatch. Contact support with ref: ' + paymentReference);
         setIsProcessing(false);
+        setOrderCreationInProgress(false);
         return;
       }
 
-      // Step 3: Create order with verified payment
+      // Step 3: Check no order already exists with this reference (Fix #8)
+      const { data: existingOrder } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('payment_reference', paymentReference)
+        .maybeSingle();
+
+      if (existingOrder) {
+        console.warn('Order already exists for this payment reference');
+        toast.success('Order already created!');
+        clearCart();
+        navigate(`/order-confirmation/${existingOrder.id}`);
+        return;
+      }
+
+      // Step 4: Create order with verified payment (Fix #4: payment_received)
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert([{
@@ -482,14 +518,27 @@ export default function Checkout() {
           notes: 'Payment verified successfully via Paystack.',
         });
 
+      // Fix #5: Increment coupon current_uses
+      if (appliedCoupon) {
+        await supabase
+          .from('coupons')
+          .update({ current_uses: appliedCoupon.current_uses + 1 })
+          .eq('id', appliedCoupon.id);
+      }
+
+      // Fix #6: clearCart only after ALL DB writes succeed
       setPendingPaymentRef(null);
       clearCart();
       toast.success('Order placed successfully!');
       navigate(`/order-confirmation/${order.id}`);
+      // Fix #7: Reset processing state after navigation
+      setIsProcessing(false);
+      setOrderCreationInProgress(false);
     } catch (error) {
       console.error('Order creation error:', error);
       toast.error('Failed to create order. Contact support with ref: ' + paymentReference);
       setIsProcessing(false);
+      setOrderCreationInProgress(false);
     }
   };
 
