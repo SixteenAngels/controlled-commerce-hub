@@ -859,6 +859,46 @@ export default function Checkout() {
           </div>
         </div>
       </main>
+
+      {/* Payment Recovery Dialog */}
+      <Dialog open={showPaymentRecovery} onOpenChange={setShowPaymentRecovery}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Payment Interrupted</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              The payment window was closed. If you completed payment, we can check the status.
+              If not, you were not charged.
+            </p>
+            {pendingPaymentRef && (
+              <p className="text-xs font-mono bg-muted p-2 rounded break-all">
+                Ref: {pendingPaymentRef}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setShowPaymentRecovery(false);
+                  setPendingPaymentRef(null);
+                }}
+              >
+                I Didn't Pay
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleRecoveryCheck}
+                disabled={isProcessing}
+              >
+                {isProcessing ? 'Checking...' : 'Check My Payment'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Footer />
     </div>
   );
