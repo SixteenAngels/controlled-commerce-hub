@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Key, Mail, Map, Shield, Database, Loader2 } from 'lucide-react';
+import { Settings, Key, Mail, Map, Shield, Database, Loader2, Award, Gift } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SettingsState {
@@ -21,6 +21,10 @@ interface SettingsState {
   otpExpiryMinutes: number;
   maintenanceMode: boolean;
   debugMode: boolean;
+  loyaltyEnabled: boolean;
+  loyaltyPointsPerOrder: number;
+  loyaltyMinOrderAmount: number;
+  referralEnabled: boolean;
 }
 
 const DEFAULT_SETTINGS: SettingsState = {
@@ -33,6 +37,10 @@ const DEFAULT_SETTINGS: SettingsState = {
   otpExpiryMinutes: 10,
   maintenanceMode: false,
   debugMode: false,
+  loyaltyEnabled: true,
+  loyaltyPointsPerOrder: 1,
+  loyaltyMinOrderAmount: 0,
+  referralEnabled: true,
 };
 
 export function AdminSettings() {
@@ -65,6 +73,10 @@ export function AdminSettings() {
         otpExpiryMinutes: dbSettings.otpExpiryMinutes ?? DEFAULT_SETTINGS.otpExpiryMinutes,
         maintenanceMode: dbSettings.maintenanceMode ?? DEFAULT_SETTINGS.maintenanceMode,
         debugMode: dbSettings.debugMode ?? DEFAULT_SETTINGS.debugMode,
+        loyaltyEnabled: dbSettings.loyaltyEnabled ?? DEFAULT_SETTINGS.loyaltyEnabled,
+        loyaltyPointsPerOrder: dbSettings.loyaltyPointsPerOrder ?? DEFAULT_SETTINGS.loyaltyPointsPerOrder,
+        loyaltyMinOrderAmount: dbSettings.loyaltyMinOrderAmount ?? DEFAULT_SETTINGS.loyaltyMinOrderAmount,
+        referralEnabled: dbSettings.referralEnabled ?? DEFAULT_SETTINGS.referralEnabled,
       });
     }
   }, [dbSettings]);
@@ -126,7 +138,7 @@ export function AdminSettings() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7">
           <TabsTrigger value="general" className="gap-2">
             <Settings className="h-4 w-4" />
             General
@@ -146,6 +158,14 @@ export function AdminSettings() {
           <TabsTrigger value="api" className="gap-2">
             <Key className="h-4 w-4" />
             API Keys
+          </TabsTrigger>
+          <TabsTrigger value="loyalty" className="gap-2">
+            <Award className="h-4 w-4" />
+            Loyalty
+          </TabsTrigger>
+          <TabsTrigger value="referral" className="gap-2">
+            <Gift className="h-4 w-4" />
+            Referral
           </TabsTrigger>
         </TabsList>
 
@@ -373,6 +393,94 @@ export function AdminSettings() {
                   <Badge variant="secondary">OpenStreetMap</Badge>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Loyalty Settings */}
+        <TabsContent value="loyalty">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5 text-primary" />
+                Loyalty Programme
+              </CardTitle>
+              <CardDescription>Configure how customers earn loyalty points on orders</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Enable Loyalty Programme</Label>
+                  <p className="text-sm text-muted-foreground">Customers earn points on qualifying orders</p>
+                </div>
+                <Switch
+                  checked={settings.loyaltyEnabled}
+                  onCheckedChange={(checked) => setSettings(prev => ({ ...prev, loyaltyEnabled: checked }))}
+                />
+              </div>
+              {settings.loyaltyEnabled && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Points Earned Per Order (per ₵1 spent)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={settings.loyaltyPointsPerOrder}
+                      onChange={(e) => setSettings(prev => ({ ...prev, loyaltyPointsPerOrder: parseInt(e.target.value) || 0 }))}
+                    />
+                    <p className="text-xs text-muted-foreground">E.g. 1 means 1 point per ₵1 spent</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Minimum Order Amount to Qualify (₵)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={settings.loyaltyMinOrderAmount}
+                      onChange={(e) => setSettings(prev => ({ ...prev, loyaltyMinOrderAmount: parseFloat(e.target.value) || 0 }))}
+                    />
+                    <p className="text-xs text-muted-foreground">Set 0 for no minimum</p>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Referral Settings */}
+        <TabsContent value="referral">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gift className="h-5 w-5 text-primary" />
+                Referral Programme
+              </CardTitle>
+              <CardDescription>Enable or disable the referral programme</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Enable Referral Programme</Label>
+                  <p className="text-sm text-muted-foreground">Allow customers to share referral codes and earn rewards</p>
+                </div>
+                <Switch
+                  checked={settings.referralEnabled}
+                  onCheckedChange={(checked) => setSettings(prev => ({ ...prev, referralEnabled: checked }))}
+                />
+              </div>
+              {settings.referralEnabled && (
+                <div className="p-4 bg-muted rounded-lg space-y-2">
+                  <h4 className="font-medium text-foreground">How it works</h4>
+                  <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
+                    <li>Customer shares their unique referral link</li>
+                    <li>New user signs up using the link</li>
+                    <li>Referrer receives a discount coupon automatically</li>
+                    <li>Referred user can start shopping right away</li>
+                  </ol>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Reward details (discount %, max uses, expiry) are configured in <strong>Promotions → Referral Reward Settings</strong>.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

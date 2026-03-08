@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Package, FolderTree, Users, LayoutDashboard, ShoppingCart, Truck, Tag, Star, MessageCircle, FileText, Bell, Settings, AlertTriangle, RefreshCcw, HelpCircle } from 'lucide-react';
+import { Loader2, Package, FolderTree, Users, LayoutDashboard, ShoppingCart, Truck, Tag, Star, MessageCircle, FileText, Bell, Settings, AlertTriangle, RefreshCcw, HelpCircle, Award, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AdminProducts } from '@/components/admin/AdminProducts';
 import { AdminCategories } from '@/components/admin/AdminCategories';
@@ -21,6 +21,7 @@ import { StockManagement } from '@/components/admin/StockManagement';
 import { AdminQA } from '@/components/admin/AdminQA';
 import { CustomerLeaderboard } from '@/components/admin/CustomerLeaderboard';
 import { AdminBundles } from '@/components/admin/AdminBundles';
+import { AdminLoyalty } from '@/components/admin/AdminLoyalty';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 export default function Admin() {
@@ -56,7 +57,8 @@ export default function Admin() {
     { name: 'Group Buys', href: '/admin/group-buys', icon: Users },
     { name: 'Categories', href: '/admin/categories', icon: FolderTree },
     { name: 'Promotions', href: '/admin/promotions', icon: Tag },
-    { name: 'Bundles', href: '/admin/bundles', icon: Package },
+    { name: 'Bundles', href: '/admin/bundles', icon: Link2 },
+    { name: 'Loyalty', href: '/admin/loyalty', icon: Award },
     { name: 'Reviews', href: '/admin/reviews', icon: Star },
     { name: 'Q&A', href: '/admin/qa', icon: HelpCircle },
     { name: 'Leaderboard', href: '/admin/leaderboard', icon: Star },
@@ -158,6 +160,7 @@ export default function Admin() {
           <Route path="/categories" element={<AdminCategories />} />
           <Route path="/promotions" element={<AdminPromotions />} />
           <Route path="/bundles" element={<AdminBundles />} />
+          <Route path="/loyalty" element={<AdminLoyalty />} />
           <Route path="/reviews" element={<AdminReviews />} />
           <Route path="/qa" element={<AdminQA />} />
           <Route path="/leaderboard" element={<CustomerLeaderboard />} />

@@ -526,16 +526,34 @@ export default function Checkout() {
           .eq('id', appliedCoupon.id);
       }
 
-      // Award loyalty points (1 point per GHS spent)
-      const pointsToAward = Math.floor(total);
-      if (pointsToAward > 0 && user?.id) {
-        await supabase.from('loyalty_points').insert({
-          user_id: user.id,
-          points: pointsToAward,
-          type: 'earn',
-          description: `Order #${order.order_number} — ${pointsToAward} points earned`,
-          order_id: order.id,
-        });
+      // Award loyalty points based on store_settings
+      try {
+        const { data: settingsData } = await supabase
+          .from('store_settings')
+          .select('key, value')
+          .in('key', ['loyaltyEnabled', 'loyaltyPointsPerOrder', 'loyaltyMinOrderAmount']);
+        
+        const sMap: Record<string, any> = {};
+        settingsData?.forEach(r => { sMap[r.key] = r.value; });
+        
+        const loyaltyEnabled = sMap.loyaltyEnabled !== false; // default true
+        const pointsPerGhs = typeof sMap.loyaltyPointsPerOrder === 'number' ? sMap.loyaltyPointsPerOrder : 1;
+        const minAmount = typeof sMap.loyaltyMinOrderAmount === 'number' ? sMap.loyaltyMinOrderAmount : 0;
+
+        if (loyaltyEnabled && total >= minAmount && user?.id) {
+          const pointsToAward = Math.floor(total * pointsPerGhs);
+          if (pointsToAward > 0) {
+            await supabase.from('loyalty_points').insert({
+              user_id: user.id,
+              points: pointsToAward,
+              type: 'earn',
+              description: `Order #${order.order_number} — ${pointsToAward} points earned`,
+              order_id: order.id,
+            });
+          }
+        }
+      } catch (loyaltyErr) {
+        console.error('Loyalty points error (non-blocking):', loyaltyErr);
       }
 
       // Fix #6: clearCart only after ALL DB writes succeed
