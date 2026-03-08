@@ -16,6 +16,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { OrderInvoice } from '@/components/orders/OrderInvoice';
 
 interface OrderItem {
   id: string;
@@ -400,12 +401,13 @@ export default function MyOrders() {
                                   )}
                                 </Button>
                               </CollapsibleTrigger>
-                              <Link to={`/track-order/${order.id}`}>
+                               <Link to={`/track-order/${order.id}`}>
                                 <Button variant="outline" size="sm">
                                   <MapPin className="h-4 w-4 mr-1" />
                                   Track
                                 </Button>
                               </Link>
+                              <OrderInvoice order={order} />
                               <p className="font-semibold text-primary">
                                 {formatPrice(order.total_amount)}
                               </p>

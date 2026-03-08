@@ -639,10 +639,16 @@ export default function Profile() {
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Truck className="h-4 w-4" />
                               <span>
-                                Est. delivery:{' '}
-                                {new Date(order.estimated_delivery_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                {' - '}
-                                {new Date(order.estimated_delivery_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                               {order.estimated_delivery_start && order.estimated_delivery_end ? (
+                                  <>
+                                    Est. delivery:{' '}
+                                    {new Date(order.estimated_delivery_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    {' - '}
+                                    {new Date(order.estimated_delivery_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                  </>
+                                ) : (
+                                  'Delivery date pending'
+                                )}
                               </span>
                             </div>
                             <div className="flex items-center gap-3">

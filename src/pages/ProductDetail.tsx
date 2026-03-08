@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 import { RecentlyViewedProducts } from '@/components/products/RecentlyViewedProducts';
+import { ProductQA } from '@/components/products/ProductQA';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -357,7 +358,8 @@ export default function ProductDetail() {
         {/* Related Products */}
         <RelatedProducts productId={product.id} categoryId={product.category_id} />
 
-        <div className="mt-12">
+        <div className="mt-12 space-y-8">
+          <ProductQA productId={product.id} />
           <ProductReviews productId={product.id} productName={product.name} />
         </div>
       </main>
