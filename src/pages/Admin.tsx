@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Package, FolderTree, Users, LayoutDashboard, ShoppingCart, Truck, Tag, Star, MessageCircle, FileText, Bell, Settings, AlertTriangle, RefreshCcw, HelpCircle, Award, Link2 } from 'lucide-react';
@@ -24,8 +24,32 @@ import { AdminBundles } from '@/components/admin/AdminBundles';
 import { AdminLoyalty } from '@/components/admin/AdminLoyalty';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+
+// Permission slug for each nav item
+const ALL_NAV_ITEMS = [
+  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard, permission: null }, // always shown
+  { name: 'Products', href: '/admin/products', icon: Package, permission: 'products' },
+  { name: 'Stock Alerts', href: '/admin/stock', icon: AlertTriangle, permission: 'stock' },
+  { name: 'Orders', href: '/admin/orders', icon: ShoppingCart, permission: 'orders' },
+  { name: 'Refunds', href: '/admin/refunds', icon: RefreshCcw, permission: 'refunds' },
+  { name: 'Shipping', href: '/admin/shipping', icon: Truck, permission: 'shipping' },
+  { name: 'Group Buys', href: '/admin/group-buys', icon: Users, permission: 'group-buys' },
+  { name: 'Categories', href: '/admin/categories', icon: FolderTree, permission: 'categories' },
+  { name: 'Promotions', href: '/admin/promotions', icon: Tag, permission: 'promotions' },
+  { name: 'Bundles', href: '/admin/bundles', icon: Link2, permission: 'bundles' },
+  { name: 'Loyalty', href: '/admin/loyalty', icon: Award, permission: 'loyalty' },
+  { name: 'Reviews', href: '/admin/reviews', icon: Star, permission: 'reviews' },
+  { name: 'Q&A', href: '/admin/qa', icon: HelpCircle, permission: 'qa' },
+  { name: 'Leaderboard', href: '/admin/leaderboard', icon: Star, permission: 'leaderboard' },
+  { name: 'Support', href: '/admin/support', icon: MessageCircle, permission: 'support' },
+  { name: 'Receipts', href: '/admin/receipts', icon: FileText, permission: 'receipts' },
+  { name: 'Users & Roles', href: '/admin/users', icon: Users, permission: '_admin_only' },
+  { name: 'Notifications', href: '/admin/notifications', icon: Bell, permission: 'notifications' },
+  { name: 'Settings', href: '/admin/settings', icon: Settings, permission: '_admin_only' },
+];
+
 export default function Admin() {
-  const { user, isAdmin, isLoading } = useAuth();
+  const { user, isAdmin, isLoading, userRole, managerPermissions } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -34,6 +58,26 @@ export default function Admin() {
       navigate('/auth');
     }
   }, [user, isAdmin, isLoading, navigate]);
+
+  // Redirect managers from admin-only routes
+  useEffect(() => {
+    if (!isLoading && userRole === 'manager') {
+      const adminOnlyPaths = ['/admin/users', '/admin/settings'];
+      if (adminOnlyPaths.some(p => location.pathname.startsWith(p))) {
+        navigate('/admin');
+      }
+    }
+  }, [location.pathname, userRole, isLoading, navigate]);
+
+  const navItems = useMemo(() => {
+    if (userRole === 'admin') return ALL_NAV_ITEMS;
+    // Manager: show Dashboard always + items they have permission for
+    return ALL_NAV_ITEMS.filter(item => {
+      if (item.permission === null) return true; // Dashboard
+      if (item.permission === '_admin_only') return false;
+      return managerPermissions.includes(item.permission);
+    });
+  }, [userRole, managerPermissions]);
 
   if (isLoading) {
     return (
@@ -46,28 +90,6 @@ export default function Admin() {
   if (!user || !isAdmin) {
     return null;
   }
-
-  const navItems = [
-    { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-    { name: 'Products', href: '/admin/products', icon: Package },
-    { name: 'Stock Alerts', href: '/admin/stock', icon: AlertTriangle },
-    { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
-    { name: 'Refunds', href: '/admin/refunds', icon: RefreshCcw },
-    { name: 'Shipping', href: '/admin/shipping', icon: Truck },
-    { name: 'Group Buys', href: '/admin/group-buys', icon: Users },
-    { name: 'Categories', href: '/admin/categories', icon: FolderTree },
-    { name: 'Promotions', href: '/admin/promotions', icon: Tag },
-    { name: 'Bundles', href: '/admin/bundles', icon: Link2 },
-    { name: 'Loyalty', href: '/admin/loyalty', icon: Award },
-    { name: 'Reviews', href: '/admin/reviews', icon: Star },
-    { name: 'Q&A', href: '/admin/qa', icon: HelpCircle },
-    { name: 'Leaderboard', href: '/admin/leaderboard', icon: Star },
-    { name: 'Support', href: '/admin/support', icon: MessageCircle },
-    { name: 'Receipts', href: '/admin/receipts', icon: FileText },
-    { name: 'Users & Roles', href: '/admin/users', icon: Users },
-    { name: 'Notifications', href: '/admin/notifications', icon: Bell },
-    { name: 'Settings', href: '/admin/settings', icon: Settings },
-  ];
 
   const isActive = (href: string) => {
     if (href === '/admin') {

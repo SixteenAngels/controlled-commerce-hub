@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Key, Mail, Map, Shield, Database, Loader2, Award, Gift } from 'lucide-react';
+import { Settings, Key, Mail, Map, Shield, Database, Loader2, Award, Gift, ToggleLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SettingsState {
@@ -25,6 +25,21 @@ interface SettingsState {
   loyaltyPointsPerOrder: number;
   loyaltyMinOrderAmount: number;
   referralEnabled: boolean;
+  // Feature flags
+  feature_group_buys: boolean;
+  feature_flash_deals: boolean;
+  feature_reviews: boolean;
+  feature_qa: boolean;
+  feature_wishlist: boolean;
+  feature_compare: boolean;
+  feature_bundles: boolean;
+  feature_price_drop_alerts: boolean;
+  feature_recently_viewed: boolean;
+  feature_live_chat: boolean;
+  feature_abandoned_cart: boolean;
+  feature_welcome_modal: boolean;
+  feature_cookie_consent: boolean;
+  feature_push_notifications: boolean;
 }
 
 const DEFAULT_SETTINGS: SettingsState = {
@@ -41,7 +56,38 @@ const DEFAULT_SETTINGS: SettingsState = {
   loyaltyPointsPerOrder: 1,
   loyaltyMinOrderAmount: 0,
   referralEnabled: true,
+  feature_group_buys: true,
+  feature_flash_deals: true,
+  feature_reviews: true,
+  feature_qa: true,
+  feature_wishlist: true,
+  feature_compare: true,
+  feature_bundles: true,
+  feature_price_drop_alerts: true,
+  feature_recently_viewed: true,
+  feature_live_chat: true,
+  feature_abandoned_cart: true,
+  feature_welcome_modal: true,
+  feature_cookie_consent: true,
+  feature_push_notifications: true,
 };
+
+const FEATURE_TOGGLES = [
+  { key: 'feature_group_buys' as const, label: 'Group Buys', description: 'Allow customers to create and join group buys' },
+  { key: 'feature_flash_deals' as const, label: 'Flash Deals', description: 'Show flash deal products and countdown timers' },
+  { key: 'feature_reviews' as const, label: 'Product Reviews', description: 'Let customers leave product reviews' },
+  { key: 'feature_qa' as const, label: 'Product Q&A', description: 'Allow questions and answers on product pages' },
+  { key: 'feature_wishlist' as const, label: 'Wishlist', description: 'Let customers save products to a wishlist' },
+  { key: 'feature_compare' as const, label: 'Product Comparison', description: 'Allow side-by-side product comparison' },
+  { key: 'feature_bundles' as const, label: 'Frequently Bought Together', description: 'Show bundle suggestions on product pages' },
+  { key: 'feature_price_drop_alerts' as const, label: 'Price Drop Alerts', description: 'Let customers subscribe to price drop notifications' },
+  { key: 'feature_recently_viewed' as const, label: 'Recently Viewed Products', description: 'Show recently viewed products section' },
+  { key: 'feature_live_chat' as const, label: 'Live Chat Widget', description: 'Show the floating live chat support button' },
+  { key: 'feature_abandoned_cart' as const, label: 'Abandoned Cart Reminder', description: 'Show reminder popup for items left in cart' },
+  { key: 'feature_welcome_modal' as const, label: 'Welcome Onboarding Modal', description: 'Show onboarding wizard for new users' },
+  { key: 'feature_cookie_consent' as const, label: 'Cookie Consent Banner', description: 'Show cookie consent popup to visitors' },
+  { key: 'feature_push_notifications' as const, label: 'Push Notifications', description: 'Enable browser push notification prompts' },
+];
 
 export function AdminSettings() {
   const queryClient = useQueryClient();
@@ -63,20 +109,14 @@ export function AdminSettings() {
 
   useEffect(() => {
     if (dbSettings) {
-      setSettings({
-        emailNotifications: dbSettings.emailNotifications ?? DEFAULT_SETTINGS.emailNotifications,
-        orderEmailsEnabled: dbSettings.orderEmailsEnabled ?? DEFAULT_SETTINGS.orderEmailsEnabled,
-        marketingEmailsEnabled: dbSettings.marketingEmailsEnabled ?? DEFAULT_SETTINGS.marketingEmailsEnabled,
-        mapProvider: dbSettings.mapProvider ?? DEFAULT_SETTINGS.mapProvider,
-        otpEnabled: dbSettings.otpEnabled ?? DEFAULT_SETTINGS.otpEnabled,
-        otpLength: dbSettings.otpLength ?? DEFAULT_SETTINGS.otpLength,
-        otpExpiryMinutes: dbSettings.otpExpiryMinutes ?? DEFAULT_SETTINGS.otpExpiryMinutes,
-        maintenanceMode: dbSettings.maintenanceMode ?? DEFAULT_SETTINGS.maintenanceMode,
-        debugMode: dbSettings.debugMode ?? DEFAULT_SETTINGS.debugMode,
-        loyaltyEnabled: dbSettings.loyaltyEnabled ?? DEFAULT_SETTINGS.loyaltyEnabled,
-        loyaltyPointsPerOrder: dbSettings.loyaltyPointsPerOrder ?? DEFAULT_SETTINGS.loyaltyPointsPerOrder,
-        loyaltyMinOrderAmount: dbSettings.loyaltyMinOrderAmount ?? DEFAULT_SETTINGS.loyaltyMinOrderAmount,
-        referralEnabled: dbSettings.referralEnabled ?? DEFAULT_SETTINGS.referralEnabled,
+      setSettings(prev => {
+        const next = { ...DEFAULT_SETTINGS };
+        for (const key of Object.keys(next) as (keyof SettingsState)[]) {
+          if (dbSettings[key] !== undefined && dbSettings[key] !== null) {
+            (next as any)[key] = dbSettings[key];
+          }
+        }
+        return next;
       });
     }
   }, [dbSettings]);
@@ -138,10 +178,14 @@ export function AdminSettings() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7">
+        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
           <TabsTrigger value="general" className="gap-2">
             <Settings className="h-4 w-4" />
             General
+          </TabsTrigger>
+          <TabsTrigger value="features" className="gap-2">
+            <ToggleLeft className="h-4 w-4" />
+            Features
           </TabsTrigger>
           <TabsTrigger value="email" className="gap-2">
             <Mail className="h-4 w-4" />
@@ -213,6 +257,35 @@ export function AdminSettings() {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Feature Toggles */}
+        <TabsContent value="features">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ToggleLeft className="h-5 w-5 text-primary" />
+                Optional Features
+              </CardTitle>
+              <CardDescription>
+                Enable or disable platform features. Disabled features will be hidden from customers.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {FEATURE_TOGGLES.map((toggle) => (
+                <div key={toggle.key} className="flex items-center justify-between py-2">
+                  <div>
+                    <Label>{toggle.label}</Label>
+                    <p className="text-sm text-muted-foreground">{toggle.description}</p>
+                  </div>
+                  <Switch
+                    checked={settings[toggle.key]}
+                    onCheckedChange={(checked) => setSettings(prev => ({ ...prev, [toggle.key]: checked }))}
+                  />
+                </div>
+              ))}
             </CardContent>
           </Card>
         </TabsContent>
