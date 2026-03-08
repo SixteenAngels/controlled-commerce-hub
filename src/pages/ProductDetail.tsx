@@ -20,6 +20,8 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 import { RecentlyViewedProducts } from '@/components/products/RecentlyViewedProducts';
 import { ProductQA } from '@/components/products/ProductQA';
+import { FrequentlyBoughtTogether } from '@/components/products/FrequentlyBoughtTogether';
+import { PriceDropAlert } from '@/components/products/PriceDropAlert';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -348,9 +350,13 @@ export default function ProductDetail() {
                 <ShoppingCart className="h-5 w-5 mr-2" />
                 Add to Cart
               </Button>
+              <PriceDropAlert productId={product.id} />
             </div>
           </div>
         </div>
+
+        {/* Frequently Bought Together */}
+        <FrequentlyBoughtTogether productId={product.id} />
 
         {/* Recently Viewed */}
         <RecentlyViewedProducts currentProductId={product.id} />

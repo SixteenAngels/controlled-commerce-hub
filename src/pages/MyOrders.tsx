@@ -408,6 +408,20 @@ export default function MyOrders() {
                                 </Button>
                               </Link>
                               <OrderInvoice order={order} />
+                              {/* Buy Again for delivered orders */}
+                              {order.status === 'delivered' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    toast.success('Items added to cart! Redirecting...');
+                                    navigate('/cart');
+                                  }}
+                                >
+                                  <ShoppingBag className="h-4 w-4 mr-1" />
+                                  Buy Again
+                                </Button>
+                              )}
                               <p className="font-semibold text-primary">
                                 {formatPrice(order.total_amount)}
                               </p>
