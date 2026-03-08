@@ -522,7 +522,7 @@ export default function Checkout() {
       if (appliedCoupon) {
         await supabase
           .from('coupons')
-          .update({ current_uses: (appliedCoupon as any).current_uses + 1 })
+          .update({ current_uses: appliedCoupon.current_uses + 1 })
           .eq('id', appliedCoupon.id);
       }
 
