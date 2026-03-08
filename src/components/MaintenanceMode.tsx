@@ -24,6 +24,24 @@ export function MaintenanceMode({ children }: MaintenanceModeProps) {
   const isAuthPage = location.pathname === '/auth';
   const isAdminPage = location.pathname.startsWith('/admin');
 
+  // Show banner for admins when maintenance is active
+  if (maintenanceEnabled && isAdmin) {
+    return (
+      <>
+        <div className="sticky top-0 z-[100] bg-destructive text-destructive-foreground px-4 py-2 text-center text-sm font-medium flex items-center justify-center gap-2">
+          <Construction className="h-4 w-4" />
+          <span>Maintenance mode is active — the store is currently hidden from customers.</span>
+          {scheduledActive && endTime && (
+            <span className="opacity-80">
+              (Until {endTime.toLocaleString()})
+            </span>
+          )}
+        </div>
+        {children}
+      </>
+    );
+  }
+
   if (maintenanceEnabled && !isAdmin && !isAuthPage && !isAdminPage) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 text-center">
