@@ -71,6 +71,8 @@ export default function Checkout() {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [pendingPaymentRef, setPendingPaymentRef] = useState<string | null>(null);
+  const [showPaymentRecovery, setShowPaymentRecovery] = useState(false);
   const [newAddress, setNewAddress] = useState({
     full_name: '',
     phone: '',
@@ -349,7 +351,6 @@ export default function Checkout() {
       return;
     }
 
-    // Check if Paystack script is loaded
     if (!window.PaystackPop) {
       toast.error('Payment system is loading. Please try again in a moment.');
       return;
@@ -358,40 +359,36 @@ export default function Checkout() {
     setIsProcessing(true);
 
     try {
-      // Get Paystack public key from edge function
       const { data: configData, error: configError } = await supabase.functions.invoke('get-paystack-key');
       
-      if (configError) {
-        console.error('Config error:', configError);
+      if (configError || !configData?.publicKey) {
         toast.error('Unable to connect to payment service. Please try again.');
         setIsProcessing(false);
         return;
       }
-      
-      if (!configData?.publicKey) {
-        console.error('No public key returned');
-        toast.error('Payment configuration error. Please contact support.');
-        setIsProcessing(false);
-        return;
-      }
+
+      const reference = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      setPendingPaymentRef(reference);
 
       const handler = window.PaystackPop.setup({
         key: configData.publicKey,
         email: user.email,
-        amount: Math.round(total * 100), // Paystack expects amount in pesewas for GHS
-        currency: 'GHS', // Always use GHS for Paystack
-        ref: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        amount: Math.round(total * 100),
+        currency: 'GHS',
+        ref: reference,
         callback: function(response: { reference: string }) {
-          // Use non-async wrapper to satisfy Paystack's callback requirement
-          createOrder(response.reference).catch((err) => {
+          verifyAndCreateOrder(response.reference).catch((err) => {
             console.error('Order creation error:', err);
-            toast.error('Order creation failed. Please contact support.');
+            toast.error('Order creation failed. Please contact support with ref: ' + response.reference);
             setIsProcessing(false);
           });
         },
         onClose: function() {
           setIsProcessing(false);
-          toast.info('Payment cancelled');
+          // Show recovery dialog instead of just a toast
+          if (pendingPaymentRef) {
+            setShowPaymentRecovery(true);
+          }
         },
       });
 
@@ -403,32 +400,60 @@ export default function Checkout() {
     }
   };
 
-  const createOrder = async (paymentReference: string) => {
+  const verifyAndCreateOrder = async (paymentReference: string) => {
     const selectedAddress = addresses.find(a => a.id === selectedAddressId);
     
     try {
-      // Create order
+      // Step 1: Server-side verification
+      const { data: verification, error: verifyError } = await supabase.functions.invoke(
+        'verify-paystack-payment',
+        { body: { reference: paymentReference } }
+      );
+
+      if (verifyError) {
+        console.error('Verification call failed:', verifyError);
+        toast.error('Payment verification failed. Contact support with ref: ' + paymentReference);
+        setIsProcessing(false);
+        return;
+      }
+
+      if (!verification?.verified) {
+        console.error('Payment not verified:', verification);
+        toast.error('Payment could not be confirmed. If you were charged, contact support with ref: ' + paymentReference);
+        setIsProcessing(false);
+        return;
+      }
+
+      // Step 2: Verify amount matches
+      const expectedAmount = Math.round(total * 100);
+      if (verification.amount !== expectedAmount) {
+        console.error(`Amount mismatch: expected ${expectedAmount}, got ${verification.amount}`);
+        toast.error('Payment amount mismatch. Contact support with ref: ' + paymentReference);
+        setIsProcessing(false);
+        return;
+      }
+
+      // Step 3: Create order with verified payment
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert([{
-          order_number: `IHS-${Date.now()}`, // Will be overwritten by trigger
+          order_number: `IHS-${Date.now()}`,
           user_id: user?.id as string,
           subtotal,
           shipping_price: shippingCost,
           total_amount: total,
           shipping_class_id: selectedShippingId,
           shipping_address: JSON.parse(JSON.stringify(selectedAddress || {})),
-          status: 'pending' as const,
-          notes: `Payment ref: ${paymentReference}`,
+          status: 'payment_received' as const,
+          payment_reference: paymentReference,
+          notes: null,
           estimated_delivery_start: new Date(Date.now() + (selectedShipping?.estimated_days_min || 7) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           estimated_delivery_end: new Date(Date.now() + (selectedShipping?.estimated_days_max || 14) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         }])
         .select()
         .single();
 
-      if (orderError) {
-        throw orderError;
-      }
+      if (orderError) throw orderError;
 
       // Create order items
       const orderItems = items.map(item => ({
@@ -445,28 +470,51 @@ export default function Checkout() {
         .from('order_items')
         .insert(orderItems);
 
-      if (itemsError) {
-        throw itemsError;
-      }
+      if (itemsError) throw itemsError;
 
       // Create initial tracking entry
       await supabase
         .from('order_tracking')
         .insert({
           order_id: order.id,
-          status: 'Order Placed',
-          location_name: 'Warehouse',
-          notes: 'Your order has been received and is being processed.',
+          status: 'Payment Received',
+          location_name: 'Payment Gateway',
+          notes: 'Payment verified successfully via Paystack.',
         });
 
+      setPendingPaymentRef(null);
       clearCart();
       toast.success('Order placed successfully!');
       navigate(`/order-confirmation/${order.id}`);
     } catch (error) {
       console.error('Order creation error:', error);
-      toast.error('Failed to create order. Please contact support.');
+      toast.error('Failed to create order. Contact support with ref: ' + paymentReference);
       setIsProcessing(false);
     }
+  };
+
+  const handleRecoveryCheck = async () => {
+    if (!pendingPaymentRef) return;
+    setIsProcessing(true);
+    
+    try {
+      const { data: verification } = await supabase.functions.invoke(
+        'verify-paystack-payment',
+        { body: { reference: pendingPaymentRef } }
+      );
+
+      if (verification?.verified) {
+        toast.success('Payment found! Creating your order...');
+        await verifyAndCreateOrder(pendingPaymentRef);
+      } else {
+        toast.info('No payment found for this reference. You were not charged.');
+        setPendingPaymentRef(null);
+        setShowPaymentRecovery(false);
+      }
+    } catch {
+      toast.error('Could not check payment status. Please contact support.');
+    }
+    setIsProcessing(false);
   };
 
   if (authLoading || items.length === 0) {
