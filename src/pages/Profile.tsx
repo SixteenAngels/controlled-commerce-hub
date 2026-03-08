@@ -85,6 +85,124 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
   refunded: { label: 'Refunded', color: 'bg-red-100 text-red-800', icon: XCircle },
 };
 
+function ReferralTab() {
+  const { referralCode, referralLink, referrals, isLoading, generateCode, isGenerating } = useReferral();
+
+  const handleCopyLink = () => {
+    if (referralLink) {
+      navigator.clipboard.writeText(referralLink);
+      toast.success('Referral link copied!');
+    }
+  };
+
+  const handleShareWhatsApp = () => {
+    if (referralLink) {
+      window.open(`https://wa.me/?text=${encodeURIComponent(`Join Ihsan with my referral link: ${referralLink}`)}`, '_blank');
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Gift className="h-5 w-5" />
+          Refer a Friend
+        </CardTitle>
+        <CardDescription>Share your referral link and earn rewards when friends join</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {!referralCode ? (
+          <div className="text-center py-8">
+            <Gift className="h-12 w-12 text-primary mx-auto mb-4" />
+            <p className="text-muted-foreground mb-4">Generate your unique referral code to start inviting friends</p>
+            <Button onClick={() => generateCode()} disabled={isGenerating}>
+              {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Generate Referral Code
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm text-muted-foreground mb-2">Your Referral Code</p>
+              <p className="text-2xl font-bold text-primary">{referralCode.code}</p>
+            </div>
+            {referralLink && (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Share your link</p>
+                <div className="flex gap-2">
+                  <Input value={referralLink} readOnly className="text-sm" />
+                  <Button variant="outline" size="icon" onClick={handleCopyLink}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleShareWhatsApp}>
+                  Share on WhatsApp
+                </Button>
+              </div>
+            )}
+            <div>
+              <p className="font-medium text-foreground mb-2">
+                Total Referrals: {referralCode.total_referrals || referrals.length}
+              </p>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function LoyaltyTab() {
+  const { pointsHistory, totalPoints, isLoading } = useLoyaltyPoints();
+  const { formatPrice } = useCurrency();
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Award className="h-5 w-5" />
+          Loyalty Points
+        </CardTitle>
+        <CardDescription>Earn points with every purchase</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="p-6 bg-primary/5 rounded-lg text-center">
+          <p className="text-sm text-muted-foreground mb-1">Your Balance</p>
+          <p className="text-4xl font-bold text-primary">{totalPoints}</p>
+          <p className="text-sm text-muted-foreground mt-1">points</p>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center py-4">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : pointsHistory.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">No points activity yet. Make a purchase to start earning!</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <h4 className="font-medium text-foreground">Recent Activity</h4>
+            {pointsHistory.slice(0, 10).map((entry: any) => (
+              <div key={entry.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{entry.description}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(entry.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <Badge variant={entry.type === 'earn' ? 'default' : 'secondary'}>
+                  {entry.type === 'earn' ? '+' : '-'}{entry.points} pts
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Profile() {
   const { user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
