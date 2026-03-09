@@ -413,7 +413,7 @@ export function AdminOrders() {
                 setSelectedOrders(new Set());
               }}
             >
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder={`Bulk update (${selectedOrders.size})`} />
               </SelectTrigger>
               <SelectContent className="bg-popover z-50">
