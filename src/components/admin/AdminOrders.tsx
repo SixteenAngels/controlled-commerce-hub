@@ -608,7 +608,7 @@ export function AdminOrders() {
                         })}
                         disabled={updateStatusMutation.isPending}
                       >
-                        <SelectTrigger className="w-52">
+                        <SelectTrigger className="w-full sm:w-52">
                           <SelectValue placeholder="Update status" />
                         </SelectTrigger>
                         <SelectContent className="bg-popover z-50">
