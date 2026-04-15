@@ -7,7 +7,9 @@ import { useProducts, ProductWithDetails } from '@/hooks/useProducts';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Loader2, Eye } from 'lucide-react';
+import { icons } from 'lucide-react';
 import { ProductQuickView } from '@/components/products/ProductQuickView';
+import { getCategoryIconName } from '@/lib/categoryIcons';
 
 // Convert product to quick view format
 function toQuickViewFormat(product: ProductWithDetails) {
@@ -94,7 +96,15 @@ export default function Categories() {
               <div key={category.id} className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl">{category.icon || '📦'}</span>
+                    {(() => {
+                      const iconName = getCategoryIconName(category.name);
+                      const Icon = (icons as any)[iconName] || icons.Package;
+                      return (
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Icon className="h-5 w-5 text-primary" />
+                        </div>
+                      );
+                    })()}
                     <div>
                       <h2 className="text-2xl font-bold text-foreground">
                         {category.name}
