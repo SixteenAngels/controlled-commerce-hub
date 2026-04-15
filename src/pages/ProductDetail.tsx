@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Star, Truck, Users, Zap, Ship, Plane, Package, ShoppingCart, ArrowLeft, Loader2, Share2, Copy, Link as LinkIcon } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -98,6 +98,7 @@ interface ShippingRule {
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const { data: product, isLoading } = useProduct(id);
+  const navigate = useNavigate();
   const { addToCart } = useCart();
   const { formatPrice } = useCurrency();
   const { addProduct } = useRecentlyViewed();
