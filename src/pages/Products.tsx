@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Filter, SlidersHorizontal, Loader2, Search, X, LayoutGrid, List } from 'lucide-react';
+import { Filter, SlidersHorizontal, Loader2, Search, X, LayoutGrid, List, icons as lucideIcons } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { ProductCard } from '@/components/products/ProductCard';
@@ -27,6 +27,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Checkbox } from '@/components/ui/checkbox';
+import { getCategoryIconName } from '@/lib/categoryIcons';
 
 // Adapter to convert DB product to the format expected by ProductCard
 function toProductCardFormat(product: ProductWithDetails) {
@@ -219,16 +220,21 @@ export default function Products() {
           >
             All
           </Badge>
-          {categories?.map((cat) => (
-            <Badge
-              key={cat.id}
-              variant={selectedCategory === cat.name ? 'default' : 'outline'}
-              className="cursor-pointer px-4 py-2"
-              onClick={() => handleCategoryChange(cat.name)}
-            >
-              {cat.icon || '📦'} {cat.name} ({cat.product_count || 0})
-            </Badge>
-          ))}
+          {categories?.map((cat) => {
+            const iconName = getCategoryIconName(cat.name);
+            const CatIcon = (lucideIcons as any)[iconName] || lucideIcons.Package;
+            return (
+              <Badge
+                key={cat.id}
+                variant={selectedCategory === cat.name ? 'default' : 'outline'}
+                className="cursor-pointer px-3 py-2 flex items-center gap-1.5"
+                onClick={() => handleCategoryChange(cat.name)}
+              >
+                <CatIcon className="h-3.5 w-3.5" />
+                {cat.name} ({cat.product_count || 0})
+              </Badge>
+            );
+          })}
         </div>
 
         {/* Filters and Sort */}
