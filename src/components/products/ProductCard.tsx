@@ -64,91 +64,56 @@ export function ProductCard({ product, onQuickView, viewMode = 'grid' }: Product
     return (
       <Link to={`/product/${product.id}`}>
         <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 border-border bg-card">
-          <div className="flex flex-col sm:flex-row">
-            {/* Image */}
-            <div className="relative w-full sm:w-48 h-48 sm:h-auto flex-shrink-0 overflow-hidden">
+          <div className="flex">
+            {/* Image - horizontal layout */}
+            <div className="relative w-28 sm:w-48 flex-shrink-0 overflow-hidden">
               <img
                 src={product.images[0]}
                 alt={product.name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
-              {/* Badges */}
               <div className="absolute top-2 left-2 flex flex-col gap-1">
                 {product.isReadyNow && (
-                  <Badge className="bg-primary text-primary-foreground text-xs">
-                    <Clock className="h-3 w-3 mr-1" />
-                    Ready Now
+                  <Badge className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5">
+                    <Clock className="h-2.5 w-2.5 mr-0.5" />
+                    Ready
                   </Badge>
                 )}
                 {product.isFlashDeal && (
-                  <Badge className="bg-destructive text-destructive-foreground text-xs">
-                    <Zap className="h-3 w-3 mr-1" />
-                    Flash Deal
+                  <Badge className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5">
+                    <Zap className="h-2.5 w-2.5 mr-0.5" />
+                    Flash
                   </Badge>
                 )}
               </div>
             </div>
             {/* Content */}
-            <CardContent className="flex-1 p-4 flex flex-col justify-between">
+            <CardContent className="flex-1 p-3 sm:p-4 flex flex-col justify-between min-w-0">
               <div>
-                <p className="text-xs text-muted-foreground mb-1">{product.category}</p>
-                <h3 className="font-semibold text-foreground text-lg mb-2 group-hover:text-primary transition-colors">
+                <p className="text-[10px] sm:text-xs text-muted-foreground mb-0.5">{product.category}</p>
+                <h3 className="font-semibold text-foreground text-sm sm:text-lg mb-1 line-clamp-2 group-hover:text-primary transition-colors">
                   {product.name}
                 </h3>
-                <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                <p className="text-xs text-muted-foreground line-clamp-2 mb-2 hidden sm:block">
                   {product.description}
                 </p>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {product.isGroupBuyEligible && (
-                    <Badge variant="secondary" className="text-xs">
-                      <Users className="h-3 w-3 mr-1" />
-                      Group Buy
-                    </Badge>
-                  )}
-                  {product.isFreeShippingEligible && (
-                    <Badge className="bg-secondary text-secondary-foreground text-xs">
-                      <Truck className="h-3 w-3 mr-1" />
-                      Free Shipping
-                    </Badge>
-                  )}
-                </div>
               </div>
               <div className="flex items-center justify-between">
-                <p className="text-xl font-bold text-primary">
+                <p className="text-base sm:text-xl font-bold text-primary">
                   {formatPrice(product.basePrice)}
                 </p>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-accent-foreground text-accent-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      {product.rating} ({product.reviewCount})
-                    </span>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={handleWishlistClick}
-                    >
-                      <Heart className={`h-4 w-4 ${inWishlist ? 'fill-destructive text-destructive' : 'text-muted-foreground'}`} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={handleCompareClick}
-                    >
-                      <GitCompare className={`h-4 w-4 ${inCompare ? 'text-primary' : 'text-muted-foreground'}`} />
+                <div className="flex items-center gap-1">
+                  <Star className="h-3.5 w-3.5 fill-accent-foreground text-accent-foreground" />
+                  <span className="text-xs text-muted-foreground">
+                    {product.rating}
+                  </span>
+                  <div className="flex gap-0.5 ml-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleWishlistClick}>
+                      <Heart className={`h-3.5 w-3.5 ${inWishlist ? 'fill-destructive text-destructive' : 'text-muted-foreground'}`} />
                     </Button>
                     {onQuickView && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={handleQuickView}
-                      >
-                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleQuickView}>
+                        <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                       </Button>
                     )}
                   </div>
@@ -161,7 +126,7 @@ export function ProductCard({ product, onQuickView, viewMode = 'grid' }: Product
     );
   }
 
-  // Grid view (default)
+  // Grid view - 2 columns on mobile with compact cards
   return (
     <Link to={`/product/${product.id}`}>
       <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 border-border bg-card">
@@ -176,75 +141,71 @@ export function ProductCard({ product, onQuickView, viewMode = 'grid' }: Product
             <Button
               variant="ghost"
               size="icon"
-              className="bg-background/80 hover:bg-background z-10 h-8 w-8"
+              className="bg-background/80 hover:bg-background z-10 h-7 w-7 sm:h-8 sm:w-8"
               onClick={handleWishlistClick}
             >
-              <Heart
-                className={`h-4 w-4 ${inWishlist ? 'fill-destructive text-destructive' : 'text-muted-foreground'}`}
-              />
+              <Heart className={`h-3.5 w-3.5 ${inWishlist ? 'fill-destructive text-destructive' : 'text-muted-foreground'}`} />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="bg-background/80 hover:bg-background z-10 h-8 w-8"
+              className="bg-background/80 hover:bg-background z-10 h-7 w-7 sm:h-8 sm:w-8"
               onClick={handleCompareClick}
             >
-              <GitCompare
-                className={`h-4 w-4 ${inCompare ? 'text-primary' : 'text-muted-foreground'}`}
-              />
+              <GitCompare className={`h-3.5 w-3.5 ${inCompare ? 'text-primary' : 'text-muted-foreground'}`} />
             </Button>
             {onQuickView && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="bg-background/80 hover:bg-background z-10 h-8 w-8"
+                className="bg-background/80 hover:bg-background z-10 h-7 w-7 sm:h-8 sm:w-8"
                 onClick={handleQuickView}
               >
-                <Eye className="h-4 w-4 text-muted-foreground" />
+                <Eye className="h-3.5 w-3.5 text-muted-foreground" />
               </Button>
             )}
           </div>
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
             {product.isReadyNow && (
-              <Badge className="bg-primary text-primary-foreground">
-                <Clock className="h-3 w-3 mr-1" />
-                Ready Now
+              <Badge className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5">
+                <Clock className="h-2.5 w-2.5 mr-0.5" />
+                Ready
               </Badge>
             )}
             {product.isFlashDeal && (
-              <Badge className="bg-destructive text-destructive-foreground">
-                <Zap className="h-3 w-3 mr-1" />
-                Flash Deal
+              <Badge className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5">
+                <Zap className="h-2.5 w-2.5 mr-0.5" />
+                Flash
               </Badge>
             )}
             {product.isGroupBuyEligible && (
-              <Badge variant="secondary" className="bg-accent text-accent-foreground">
-                <Users className="h-3 w-3 mr-1" />
-                Group Buy
+              <Badge variant="secondary" className="bg-accent text-accent-foreground text-[10px] px-1.5 py-0.5">
+                <Users className="h-2.5 w-2.5 mr-0.5" />
+                Group
               </Badge>
             )}
             {product.isFreeShippingEligible && (
-              <Badge className="bg-secondary text-secondary-foreground">
-                <Truck className="h-3 w-3 mr-1" />
+              <Badge className="bg-secondary text-secondary-foreground text-[10px] px-1.5 py-0.5">
+                <Truck className="h-2.5 w-2.5 mr-0.5" />
                 Free Ship
               </Badge>
             )}
           </div>
         </div>
-        <CardContent className="p-4">
-          <p className="text-xs text-muted-foreground mb-1">{product.category}</p>
-          <h3 className="font-semibold text-foreground line-clamp-1 mb-2 group-hover:text-primary transition-colors">
+        <CardContent className="p-2.5 sm:p-4">
+          <p className="text-[10px] sm:text-xs text-muted-foreground mb-0.5">{product.category}</p>
+          <h3 className="font-semibold text-foreground line-clamp-1 text-xs sm:text-sm mb-1 group-hover:text-primary transition-colors">
             {product.name}
           </h3>
           <div className="flex items-center justify-between">
-            <p className="text-lg font-bold text-primary">
+            <p className="text-sm sm:text-lg font-bold text-primary">
               {formatPrice(product.basePrice)}
             </p>
-            <div className="flex items-center gap-1">
-              <Star className="h-4 w-4 fill-accent-foreground text-accent-foreground" />
-              <span className="text-sm text-muted-foreground">
-                {product.rating} ({product.reviewCount})
+            <div className="flex items-center gap-0.5">
+              <Star className="h-3 w-3 sm:h-4 sm:w-4 fill-accent-foreground text-accent-foreground" />
+              <span className="text-[10px] sm:text-sm text-muted-foreground">
+                {product.rating}
               </span>
             </div>
           </div>

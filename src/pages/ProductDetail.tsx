@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Star, Truck, Users, Zap, Ship, Plane, Package, ShoppingCart, ArrowLeft, Loader2, Share2, Copy, Link as LinkIcon } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -98,6 +98,7 @@ interface ShippingRule {
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const { data: product, isLoading } = useProduct(id);
+  const navigate = useNavigate();
   const { addToCart } = useCart();
   const { formatPrice } = useCurrency();
   const { addProduct } = useRecentlyViewed();
@@ -346,10 +347,34 @@ export default function ProductDetail() {
                   <p className="text-2xl font-bold text-primary">Total: {formatPrice(totalPrice)}</p>
                 </div>
               )}
-              <Button size="lg" className="w-full" onClick={handleAddToCart} disabled={selectedVariants.length === 0}>
-                <ShoppingCart className="h-5 w-5 mr-2" />
-                Add to Cart
-              </Button>
+              <div className="flex gap-3">
+                <Button size="lg" className="flex-1" variant="outline" onClick={handleAddToCart} disabled={selectedVariants.length === 0}>
+                  <ShoppingCart className="h-5 w-5 mr-2" />
+                  Add to Cart
+                </Button>
+                <Button size="lg" className="flex-1" onClick={() => {
+                  if (!product) return;
+                  if (selectedVariants.length === 0) {
+                    toast.error('Please select at least one variant');
+                    return;
+                  }
+                  const cartProduct = toCartProduct(product);
+                  selectedVariants.forEach((variant) => {
+                    const cartVariant: ProductVariant = {
+                      id: variant.id,
+                      size: variant.size || undefined,
+                      color: variant.color || undefined,
+                      price: variant.price,
+                      stock: variant.stock || 0,
+                    };
+                    addToCart(cartProduct, cartVariant, variant.quantity);
+                  });
+                  navigate('/checkout');
+                }} disabled={selectedVariants.length === 0}>
+                  <Zap className="h-5 w-5 mr-2" />
+                  Buy Now
+                </Button>
+              </div>
               <PriceDropAlert productId={product.id} />
             </div>
           </div>
