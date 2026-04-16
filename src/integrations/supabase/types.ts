@@ -1555,6 +1555,7 @@ export type Database = {
       order_status:
         | "pending"
         | "payment_received"
+        | "order_processed"
         | "order_placed"
         | "confirmed"
         | "processing"
@@ -1563,6 +1564,7 @@ export type Database = {
         | "in_transit"
         | "in_ghana"
         | "ready_for_delivery"
+        | "handed_to_courier"
         | "out_for_delivery"
         | "delivered"
         | "cancelled"
@@ -1710,6 +1712,7 @@ export const Constants = {
       order_status: [
         "pending",
         "payment_received",
+        "order_processed",
         "order_placed",
         "confirmed",
         "processing",
@@ -1718,6 +1721,7 @@ export const Constants = {
         "in_transit",
         "in_ghana",
         "ready_for_delivery",
+        "handed_to_courier",
         "out_for_delivery",
         "delivered",
         "cancelled",
