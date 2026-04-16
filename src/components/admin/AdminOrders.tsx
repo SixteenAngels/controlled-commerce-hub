@@ -318,7 +318,7 @@ export function AdminOrders() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
       toast.success('Tracking updated');
-      setTrackingLocation({ lat: '', lng: '', location: '', notes: '' });
+      setTrackingLocation({ lat: '', lng: '', location: '', notes: '', courierName: '', courierTrackingNumber: '', deliveryFee: '' });
     },
     onError: (error: Error) => {
       toast.error(error.message);
