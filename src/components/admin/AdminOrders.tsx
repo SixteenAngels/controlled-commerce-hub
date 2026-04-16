@@ -21,6 +21,7 @@ const ORDER_STATUSES = [
   'pending',
   'payment_received',
   'order_placed',
+  'order_processed',
   'confirmed',
   'processing',
   'packed_for_delivery',
@@ -28,6 +29,7 @@ const ORDER_STATUSES = [
   'in_transit',
   'in_ghana',
   'ready_for_delivery',
+  'handed_to_courier',
   'out_for_delivery',
   'delivered',
   'cancelled',
@@ -60,6 +62,7 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   pending: 'Pending',
   payment_received: 'Payment Received',
   order_placed: 'Order Placed',
+  order_processed: 'Order Processed',
   confirmed: 'Confirmed',
   processing: 'Processing',
   packed_for_delivery: 'Packed for Delivery',
@@ -67,6 +70,7 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   in_transit: 'In Transit',
   in_ghana: 'In Ghana',
   ready_for_delivery: 'Ready for Delivery',
+  handed_to_courier: 'Handed to Courier',
   out_for_delivery: 'Out for Delivery',
   delivered: 'Delivered',
   cancelled: 'Cancelled',
@@ -80,9 +84,10 @@ export function AdminOrders() {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
-  const [trackingLocation, setTrackingLocation] = useState({ lat: '', lng: '', location: '', notes: '' });
+  const [trackingLocation, setTrackingLocation] = useState({ lat: '', lng: '', location: '', notes: '', courierName: '', courierTrackingNumber: '', deliveryFee: '' });
   const [deliveryDates, setDeliveryDates] = useState<{ orderId: string; start: string; end: string }>({ orderId: '', start: '', end: '' });
   const [newOrderAlert, setNewOrderAlert] = useState(false);
+  const [statusNotes, setStatusNotes] = useState<Record<string, string>>({});
 
   // Real-time subscription for new/updated orders
   useEffect(() => {
@@ -184,7 +189,7 @@ export function AdminOrders() {
   };
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ orderId, status, userId, orderNumber }: { orderId: string; status: OrderStatus; userId?: string; orderNumber?: string }) => {
+    mutationFn: async ({ orderId, status, userId, orderNumber, customNote }: { orderId: string; status: OrderStatus; userId?: string; orderNumber?: string; customNote?: string }) => {
       const { error } = await supabase
         .from('orders')
         .update({ status, updated_at: new Date().toISOString() })
@@ -195,10 +200,41 @@ export function AdminOrders() {
         throw error;
       }
 
+      // Auto-create tracking entry with note
+      const autoNotes: Record<string, string> = {
+        payment_received: "We've received your payment. Thank you!",
+        order_placed: 'Your order has been placed successfully.',
+        order_processed: 'Item verified and packed. Preparing for courier pickup.',
+        confirmed: 'Your order has been confirmed.',
+        processing: 'Your order is being processed.',
+        packed_for_delivery: 'Your order has been packed and is ready for shipping.',
+        shipped: 'Your order has been shipped!',
+        in_transit: 'Your order is on its way.',
+        in_ghana: 'Your order has arrived in Ghana!',
+        ready_for_delivery: 'Your order is ready for pickup/delivery.',
+        handed_to_courier: 'Courier has picked up your package.',
+        out_for_delivery: 'Your order is on the way to your location.',
+        delivered: 'Item received. Enjoy!',
+        cancelled: 'Your order has been cancelled.',
+        refunded: 'Your order has been refunded.',
+      };
+
+      const trackingNote = customNote 
+        ? (autoNotes[status] ? `${autoNotes[status]} — ${customNote}` : customNote)
+        : (autoNotes[status] || '');
+
+      await supabase.from('order_tracking').insert({
+        order_id: orderId,
+        status: status,
+        location_name: STATUS_LABELS[status],
+        notes: trackingNote,
+      });
+
       const statusMessages: Record<OrderStatus, string> = {
         pending: 'Your order is pending confirmation.',
         payment_received: 'Payment received! Processing your order.',
         order_placed: 'Your order has been placed successfully!',
+        order_processed: 'Item verified and packed. Preparing for courier pickup.',
         confirmed: 'Your order has been confirmed!',
         processing: 'Your order is being processed.',
         packed_for_delivery: 'Your order has been packed and ready for shipping!',
@@ -206,6 +242,7 @@ export function AdminOrders() {
         in_transit: 'Your order is in transit.',
         in_ghana: 'Your order has arrived in Ghana!',
         ready_for_delivery: 'Your order is ready for delivery!',
+        handed_to_courier: 'Courier has picked up your package.',
         out_for_delivery: 'Your order is out for delivery!',
         delivered: 'Your order has been delivered!',
         cancelled: 'Your order has been cancelled.',
@@ -213,10 +250,14 @@ export function AdminOrders() {
       };
 
       if (userId) {
+        const message = customNote 
+          ? `${statusMessages[status]} Note: ${customNote}`
+          : statusMessages[status];
+          
         await supabase.from('notifications').insert({
           user_id: userId,
           title: `Order Status: ${STATUS_LABELS[status]}`,
-          message: statusMessages[status],
+          message,
           type: 'order_status',
           data: { orderId, status },
         });
@@ -238,6 +279,7 @@ export function AdminOrders() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
       toast.success('Order status updated and customer notified');
+      setStatusNotes({});
     },
     onError: (error: Error) => {
       console.error('Mutation error:', error);
@@ -311,7 +353,7 @@ export function AdminOrders() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
       toast.success('Tracking updated');
-      setTrackingLocation({ lat: '', lng: '', location: '', notes: '' });
+      setTrackingLocation({ lat: '', lng: '', location: '', notes: '', courierName: '', courierTrackingNumber: '', deliveryFee: '' });
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -323,6 +365,7 @@ export function AdminOrders() {
       case 'pending': return 'bg-muted text-muted-foreground';
       case 'payment_received': return 'bg-green-100 text-green-800';
       case 'order_placed': return 'bg-blue-100 text-blue-800';
+      case 'order_processed': return 'bg-blue-200 text-blue-900';
       case 'confirmed': return 'bg-primary/20 text-primary';
       case 'processing': return 'bg-accent text-accent-foreground';
       case 'packed_for_delivery': return 'bg-purple-100 text-purple-800';
@@ -330,6 +373,7 @@ export function AdminOrders() {
       case 'in_transit': return 'bg-primary/40 text-primary';
       case 'in_ghana': return 'bg-orange-100 text-orange-800';
       case 'ready_for_delivery': return 'bg-cyan-100 text-cyan-800';
+      case 'handed_to_courier': return 'bg-indigo-100 text-indigo-800';
       case 'out_for_delivery': return 'bg-primary/50 text-primary-foreground';
       case 'delivered': return 'bg-primary text-primary-foreground';
       case 'cancelled': return 'bg-destructive/20 text-destructive';
@@ -598,27 +642,39 @@ export function AdminOrders() {
 
                     {/* Actions */}
                     <div className="flex flex-wrap gap-2">
-                      <Select
-                        value={order.status || 'pending'}
-                        onValueChange={(value) => updateStatusMutation.mutate({ 
-                          orderId: order.id, 
-                          status: value as OrderStatus,
-                          userId: order.user_id,
-                          orderNumber: order.order_number 
-                        })}
-                        disabled={updateStatusMutation.isPending}
-                      >
-                        <SelectTrigger className="w-full sm:w-52">
-                          <SelectValue placeholder="Update status" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-popover z-50">
-                          {ORDER_STATUSES.map((status) => (
-                            <SelectItem key={status} value={status}>
-                              {STATUS_LABELS[status]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {/* Status Update with Custom Note */}
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap gap-2">
+                          <Select
+                            value={order.status || 'pending'}
+                            onValueChange={(value) => updateStatusMutation.mutate({ 
+                              orderId: order.id, 
+                              status: value as OrderStatus,
+                              userId: order.user_id,
+                              orderNumber: order.order_number,
+                              customNote: statusNotes[order.id] || undefined,
+                            })}
+                            disabled={updateStatusMutation.isPending}
+                          >
+                            <SelectTrigger className="w-full sm:w-52">
+                              <SelectValue placeholder="Update status" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-popover z-50">
+                              {ORDER_STATUSES.map((status) => (
+                                <SelectItem key={status} value={status}>
+                                  {STATUS_LABELS[status]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Input
+                          placeholder="Add a note for the customer (optional)..."
+                          value={statusNotes[order.id] || ''}
+                          onChange={(e) => setStatusNotes(prev => ({ ...prev, [order.id]: e.target.value }))}
+                          className="text-sm"
+                        />
+                      </div>
 
                       {/* Set Estimated Delivery Dialog */}
                       <Dialog>
@@ -740,11 +796,37 @@ export function AdminOrders() {
                           </DialogHeader>
                           <div className="space-y-4">
                             <div className="space-y-2">
-                              <Label>Location Name</Label>
+                              <Label>Location / Description</Label>
                               <Input
                                 value={trackingLocation.location}
                                 onChange={(e) => setTrackingLocation(prev => ({ ...prev, location: e.target.value }))}
                                 placeholder="e.g., Arrived at warehouse"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-2">
+                                <Label>Courier Name (optional)</Label>
+                                <Input
+                                  value={trackingLocation.courierName}
+                                  onChange={(e) => setTrackingLocation(prev => ({ ...prev, courierName: e.target.value }))}
+                                  placeholder="e.g., DHL, FedEx"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Courier Tracking # (optional)</Label>
+                                <Input
+                                  value={trackingLocation.courierTrackingNumber}
+                                  onChange={(e) => setTrackingLocation(prev => ({ ...prev, courierTrackingNumber: e.target.value }))}
+                                  placeholder="e.g., DHL123456"
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Delivery Fee (optional)</Label>
+                              <Input
+                                value={trackingLocation.deliveryFee}
+                                onChange={(e) => setTrackingLocation(prev => ({ ...prev, deliveryFee: e.target.value }))}
+                                placeholder="e.g., 50.00"
                               />
                             </div>
                             <div className="grid grid-cols-2 gap-2">
@@ -766,21 +848,36 @@ export function AdminOrders() {
                               </div>
                             </div>
                             <div className="space-y-2">
-                              <Label>Notes (optional)</Label>
-                              <Input
+                              <Label>Notes for Customer</Label>
+                              <Textarea
                                 value={trackingLocation.notes}
                                 onChange={(e) => setTrackingLocation(prev => ({ ...prev, notes: e.target.value }))}
+                                placeholder="Custom note visible to the customer..."
+                                rows={2}
                               />
                             </div>
                             <Button
-                              onClick={() => addTrackingMutation.mutate({
-                                orderId: order.id,
-                                status: order.status || 'pending',
-                                location_name: trackingLocation.location,
-                                latitude: trackingLocation.lat ? parseFloat(trackingLocation.lat) : undefined,
-                                longitude: trackingLocation.lng ? parseFloat(trackingLocation.lng) : undefined,
-                                notes: trackingLocation.notes || undefined,
-                              })}
+                              onClick={() => {
+                                // Build comprehensive notes
+                                let fullNotes = trackingLocation.notes || '';
+                                if (trackingLocation.courierName) {
+                                  fullNotes = `[${trackingLocation.courierName}] ${fullNotes}`;
+                                }
+                                if (trackingLocation.courierTrackingNumber) {
+                                  fullNotes += ` Tracking: ${trackingLocation.courierTrackingNumber}`;
+                                }
+                                if (trackingLocation.deliveryFee) {
+                                  fullNotes += ` | Delivery fee: ₵${trackingLocation.deliveryFee}`;
+                                }
+                                addTrackingMutation.mutate({
+                                  orderId: order.id,
+                                  status: order.status || 'pending',
+                                  location_name: trackingLocation.location,
+                                  latitude: trackingLocation.lat ? parseFloat(trackingLocation.lat) : undefined,
+                                  longitude: trackingLocation.lng ? parseFloat(trackingLocation.lng) : undefined,
+                                  notes: fullNotes.trim() || undefined,
+                                });
+                              }}
                               disabled={!trackingLocation.location}
                             >
                               Add Tracking

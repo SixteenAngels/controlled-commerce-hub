@@ -6,12 +6,13 @@ export interface Category {
   name: string;
   slug: string;
   icon: string | null;
-  product_count: number | null;
+  product_count: number;
   is_active: boolean | null;
 }
 
 async function fetchCategories(): Promise<Category[]> {
-  const { data, error } = await supabase
+  // Get categories
+  const { data: cats, error } = await supabase
     .from('categories')
     .select('*')
     .eq('is_active', true)
@@ -19,12 +20,25 @@ async function fetchCategories(): Promise<Category[]> {
 
   if (error) throw error;
 
-  return (data || []).map((cat) => ({
+  // Get live product counts
+  const { data: products } = await supabase
+    .from('products')
+    .select('category_id')
+    .eq('is_active', true);
+
+  const countMap: Record<string, number> = {};
+  products?.forEach(p => {
+    if (p.category_id) {
+      countMap[p.category_id] = (countMap[p.category_id] || 0) + 1;
+    }
+  });
+
+  return (cats || []).map((cat) => ({
     id: cat.id,
     name: cat.name,
     slug: cat.slug,
     icon: cat.icon,
-    product_count: cat.product_count,
+    product_count: countMap[cat.id] || 0,
     is_active: cat.is_active,
   }));
 }

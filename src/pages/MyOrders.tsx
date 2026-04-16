@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, Truck, MapPin, Clock, CheckCircle, XCircle, Loader, ChevronDown, ChevronUp, Phone, CreditCard, ShoppingBag, PackageCheck, Plane, MapPinned, Ban, Users } from 'lucide-react';
+import { Package, Truck, MapPin, Clock, CheckCircle, XCircle, Loader, ChevronDown, ChevronUp, Phone, CreditCard, ShoppingBag, PackageCheck, Plane, MapPinned, Ban, Users, Star, MessageSquare } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -57,15 +60,15 @@ interface Order {
   estimated_delivery_start: string;
   estimated_delivery_end: string;
   shipping_address: ShippingAddress | null;
+  shipping_class_id: string | null;
   order_items: OrderItem[];
   order_tracking: TrackingPoint[];
 }
 
-// Simplified tabs: All, Active, Ready, Completed, Cancelled
 const CUSTOMER_STATUS_TABS = [
   { value: 'all', label: 'All Orders', icon: Package },
-  { value: 'active', label: 'Active', icon: Truck, statuses: ['pending', 'payment_received', 'order_placed', 'confirmed', 'processing', 'packed_for_delivery', 'shipped', 'in_transit'] },
-  { value: 'ready', label: 'Ready', icon: MapPinned, statuses: ['in_ghana', 'ready_for_delivery', 'out_for_delivery'] },
+  { value: 'active', label: 'Active', icon: Truck, statuses: ['pending', 'payment_received', 'order_placed', 'order_processed', 'confirmed', 'processing', 'packed_for_delivery', 'shipped', 'in_transit'] },
+  { value: 'ready', label: 'Ready', icon: MapPinned, statuses: ['in_ghana', 'ready_for_delivery', 'handed_to_courier', 'out_for_delivery'] },
   { value: 'completed', label: 'Completed', icon: CheckCircle, statuses: ['delivered'] },
   { value: 'cancelled', label: 'Cancelled', icon: XCircle, statuses: ['cancelled', 'refunded'] },
 ];
@@ -74,6 +77,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
   pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
   payment_received: { label: 'Payment Received', color: 'bg-green-100 text-green-800', icon: CheckCircle },
   order_placed: { label: 'Order Placed', color: 'bg-blue-100 text-blue-800', icon: Package },
+  order_processed: { label: 'Order Processed', color: 'bg-blue-100 text-blue-800', icon: PackageCheck },
   confirmed: { label: 'Confirmed', color: 'bg-blue-100 text-blue-800', icon: CheckCircle },
   processing: { label: 'Processing', color: 'bg-purple-100 text-purple-800', icon: Loader },
   packed_for_delivery: { label: 'Packed', color: 'bg-purple-100 text-purple-800', icon: Package },
@@ -81,14 +85,15 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
   in_transit: { label: 'In Transit', color: 'bg-cyan-100 text-cyan-800', icon: Truck },
   in_ghana: { label: 'In Ghana', color: 'bg-orange-100 text-orange-800', icon: MapPin },
   ready_for_delivery: { label: 'Ready for Pickup', color: 'bg-teal-100 text-teal-800', icon: Package },
+  handed_to_courier: { label: 'Handed to Courier', color: 'bg-indigo-100 text-indigo-800', icon: Truck },
   out_for_delivery: { label: 'Out for Delivery', color: 'bg-cyan-100 text-cyan-800', icon: Truck },
   delivered: { label: 'Delivered', color: 'bg-green-100 text-green-800', icon: CheckCircle },
   cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: XCircle },
   refunded: { label: 'Refunded', color: 'bg-red-100 text-red-800', icon: XCircle },
 };
 
-// Progress checkpoints for the horizontal bar
-const PROGRESS_CHECKPOINTS = [
+// Standard (international) order checkpoints
+const STANDARD_CHECKPOINTS = [
   { key: 'payment_received', label: 'Payment' },
   { key: 'order_placed', label: 'Ordered' },
   { key: 'packed_for_delivery', label: 'Packed' },
@@ -98,29 +103,85 @@ const PROGRESS_CHECKPOINTS = [
   { key: 'delivered', label: 'Delivered' },
 ];
 
-function getProgressPercentage(status: string): number {
-  const statusOrder = [
-    'pending', 'payment_received', 'order_placed', 'confirmed', 'processing',
-    'packed_for_delivery', 'shipped', 'in_transit', 'in_ghana',
-    'ready_for_delivery', 'out_for_delivery', 'delivered',
-  ];
-  const idx = statusOrder.indexOf(status);
-  if (idx < 0) return 0;
-  return Math.round(((idx + 1) / statusOrder.length) * 100);
+// Courier (Ready Now / local) order checkpoints
+const COURIER_CHECKPOINTS = [
+  { key: 'payment_received', label: 'Payment' },
+  { key: 'order_processed', label: 'Processed' },
+  { key: 'handed_to_courier', label: 'Courier' },
+  { key: 'out_for_delivery', label: 'Out for Delivery' },
+  { key: 'delivered', label: 'Delivered' },
+];
+
+// Check if shipping class name indicates courier
+const COURIER_SHIPPING_NAME = 'standard courier';
+
+function getCheckpointsForOrder(order: Order, shippingClassNames: Record<string, string>): typeof STANDARD_CHECKPOINTS {
+  const shippingName = order.shipping_class_id ? shippingClassNames[order.shipping_class_id] : '';
+  const isCourier = shippingName?.toLowerCase().includes('courier');
+  // Also check if order uses courier statuses
+  const hasCourierStatus = ['order_processed', 'handed_to_courier'].includes(order.status);
+  return (isCourier || hasCourierStatus) ? COURIER_CHECKPOINTS : STANDARD_CHECKPOINTS;
 }
 
-function getCheckpointStatus(orderStatus: string, checkpointKey: string): 'done' | 'current' | 'pending' {
-  const statusOrder = [
-    'pending', 'payment_received', 'order_placed', 'confirmed', 'processing',
+function getProgressPercentage(status: string, checkpoints: typeof STANDARD_CHECKPOINTS): number {
+  const keys = checkpoints.map(c => c.key);
+  const idx = keys.indexOf(status);
+  if (idx >= 0) return Math.round(((idx + 1) / keys.length) * 100);
+  // Fallback: use standard order
+  const allStatuses = [
+    'pending', 'payment_received', 'order_placed', 'order_processed', 'confirmed', 'processing',
     'packed_for_delivery', 'shipped', 'in_transit', 'in_ghana',
-    'ready_for_delivery', 'out_for_delivery', 'delivered',
+    'ready_for_delivery', 'handed_to_courier', 'out_for_delivery', 'delivered',
   ];
-  const orderIdx = statusOrder.indexOf(orderStatus);
-  const checkIdx = statusOrder.indexOf(checkpointKey);
+  const allIdx = allStatuses.indexOf(status);
+  if (allIdx < 0) return 0;
+  // Map to closest checkpoint
+  for (let i = keys.length - 1; i >= 0; i--) {
+    if (allStatuses.indexOf(keys[i]) <= allIdx) {
+      return Math.round(((i + 1) / keys.length) * 100);
+    }
+  }
+  return 0;
+}
+
+function getCheckpointStatus(orderStatus: string, checkpointKey: string, checkpoints: typeof STANDARD_CHECKPOINTS): 'done' | 'current' | 'pending' {
+  const allStatuses = [
+    'pending', 'payment_received', 'order_placed', 'order_processed', 'confirmed', 'processing',
+    'packed_for_delivery', 'shipped', 'in_transit', 'in_ghana',
+    'ready_for_delivery', 'handed_to_courier', 'out_for_delivery', 'delivered',
+  ];
+  const orderIdx = allStatuses.indexOf(orderStatus);
+  const checkIdx = allStatuses.indexOf(checkpointKey);
   if (checkIdx < 0 || orderIdx < 0) return 'pending';
   if (orderIdx >= checkIdx) return 'done';
-  if (orderIdx === checkIdx - 1) return 'current';
+  // Find the next checkpoint after current order status
+  const keys = checkpoints.map(c => c.key);
+  const currentCpIdx = keys.findIndex(k => allStatuses.indexOf(k) > orderIdx);
+  if (currentCpIdx >= 0 && keys[currentCpIdx] === checkpointKey) return 'current';
   return 'pending';
+}
+
+// Generate auto notes for tracking entries
+function getAutoNote(status: string, orderItems: OrderItem[]): string {
+  const productName = orderItems[0]?.product_name || 'your order';
+  switch (status) {
+    case 'payment_received': return `We've received your payment for "${productName}". Thank you!`;
+    case 'order_placed': return `Your order for "${productName}" has been placed successfully.`;
+    case 'order_processed': return `Item verified and packed. Preparing for courier pickup.`;
+    case 'confirmed': return `Your order has been confirmed and is being prepared.`;
+    case 'processing': return `Your order is being processed.`;
+    case 'packed_for_delivery': return `Your order has been packed and is ready for shipping.`;
+    case 'shipped': return `Your order has been shipped!`;
+    case 'in_transit': return `Your order is on its way.`;
+    case 'in_ghana': return `Your order has arrived in Ghana!`;
+    case 'ready_for_delivery': return `Your order is ready for pickup/delivery.`;
+    case 'handed_to_courier': return `Courier has picked up your package.`;
+    case 'out_for_delivery': return `Your order is on the way to your location.`;
+    case 'delivered': return `Item received. Enjoy!`;
+    case 'cancelled': return `Your order has been cancelled.`;
+    case 'refunded': return `Your order has been refunded.`;
+    default: return '';
+  }
 }
 
 export default function MyOrders() {
@@ -132,6 +193,11 @@ export default function MyOrders() {
   const [activeTab, setActiveTab] = useState('all');
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [productImages, setProductImages] = useState<Record<string, string>>({});
+  const [shippingClassNames, setShippingClassNames] = useState<Record<string, string>>({});
+  const [reviewDialogOrder, setReviewDialogOrder] = useState<Order | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -143,8 +209,18 @@ export default function MyOrders() {
   useEffect(() => {
     if (user) {
       fetchOrders();
+      fetchShippingClasses();
     }
   }, [user]);
+
+  const fetchShippingClasses = async () => {
+    const { data } = await supabase.from('shipping_classes').select('id, name');
+    if (data) {
+      const map: Record<string, string> = {};
+      data.forEach(sc => { map[sc.id] = sc.name; });
+      setShippingClassNames(map);
+    }
+  };
 
   const fetchOrders = async () => {
     const { data, error } = await supabase
@@ -164,7 +240,7 @@ export default function MyOrders() {
         ...order,
         shipping_address: order.shipping_address as unknown as ShippingAddress | null,
         order_tracking: (order.order_tracking || []).sort((a: any, b: any) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         ),
       }));
       setOrders(mappedOrders);
@@ -188,7 +264,6 @@ export default function MyOrders() {
           
           if (images) {
             const imgMap: Record<string, string> = {};
-            // Map variant_id -> first image of its product
             const productImageMap: Record<string, string> = {};
             for (const img of images) {
               if (!productImageMap[img.product_id]) {
@@ -236,6 +311,58 @@ export default function MyOrders() {
   };
 
   const isCancelledStatus = (status: string) => ['cancelled', 'refunded'].includes(status);
+
+  const handleConfirmDelivery = async (order: Order) => {
+    const { error } = await supabase
+      .from('orders')
+      .update({ status: 'delivered', updated_at: new Date().toISOString() })
+      .eq('id', order.id)
+      .eq('user_id', user!.id);
+    if (error) {
+      toast.error('Failed to confirm delivery');
+    } else {
+      toast.success('Delivery confirmed!');
+      fetchOrders();
+      // Prompt to review
+      setReviewDialogOrder(order);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    if (!reviewDialogOrder || !user) return;
+    setReviewSubmitting(true);
+    
+    // Get product_id from order items via variant
+    const variantId = reviewDialogOrder.order_items[0]?.product_variant_id;
+    if (!variantId) { setReviewSubmitting(false); return; }
+    
+    const { data: variant } = await supabase
+      .from('product_variants')
+      .select('product_id')
+      .eq('id', variantId)
+      .single();
+    
+    if (!variant) { setReviewSubmitting(false); toast.error('Could not find product'); return; }
+    
+    const { error } = await supabase.from('reviews').insert({
+      product_id: variant.product_id,
+      user_id: user.id,
+      rating: reviewRating,
+      comment: reviewComment || null,
+      is_verified: true,
+      order_id: reviewDialogOrder.id,
+    });
+    
+    if (error) {
+      toast.error('Failed to submit review');
+    } else {
+      toast.success('Review submitted! It will appear after approval.');
+    }
+    setReviewSubmitting(false);
+    setReviewDialogOrder(null);
+    setReviewRating(5);
+    setReviewComment('');
+  };
 
   if (authLoading || loading) {
     return (
@@ -304,17 +431,17 @@ export default function MyOrders() {
                 {filteredOrders.map((order) => {
                   const isExpanded = expandedOrderId === order.id;
                   const isCancelled = isCancelledStatus(order.status);
+                  const checkpoints = getCheckpointsForOrder(order, shippingClassNames);
                   return (
                     <Card key={order.id} className="overflow-hidden">
                       <CardContent className="p-0">
-                        {/* Order Header - tap to expand */}
+                        {/* Order Header */}
                         <button
                           className="w-full text-left p-4 bg-muted/50 border-b border-border"
                           onClick={() => toggleOrderExpansion(order.id)}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-3 min-w-0">
-                              {/* First item image */}
                               {order.order_items[0] && (
                                 <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-border bg-muted">
                                   {productImages[order.order_items[0].product_variant_id] ? (
@@ -348,7 +475,6 @@ export default function MyOrders() {
                             </div>
                           </div>
 
-                          {/* Price row */}
                           <div className="flex items-center justify-between mt-2">
                             <p className="font-bold text-primary text-sm">
                               {formatPrice(order.total_amount)}
@@ -368,10 +494,10 @@ export default function MyOrders() {
                             {/* Horizontal Progress Bar */}
                             {!isCancelled && (
                               <div className="space-y-3">
-                                <Progress value={getProgressPercentage(order.status)} className="h-2" />
+                                <Progress value={getProgressPercentage(order.status, checkpoints)} className="h-2" />
                                 <div className="flex justify-between">
-                                  {PROGRESS_CHECKPOINTS.map((cp) => {
-                                    const cpStatus = getCheckpointStatus(order.status, cp.key);
+                                  {checkpoints.map((cp) => {
+                                    const cpStatus = getCheckpointStatus(order.status, cp.key, checkpoints);
                                     return (
                                       <div key={cp.key} className="flex flex-col items-center flex-1">
                                         <div className={`w-3 h-3 rounded-full mb-1 ${
@@ -393,31 +519,58 @@ export default function MyOrders() {
                               </div>
                             )}
 
-                            {/* Vertical Timeline */}
-                            {order.order_tracking.length > 0 && (
+                            {/* Vertical Timeline with Time | Status | Note */}
+                            {!isCancelled && (
                               <div className="space-y-0">
-                                <h4 className="text-sm font-semibold text-foreground mb-2">Status Updates</h4>
-                                {order.order_tracking.slice(0, 5).map((track, index) => (
-                                  <div key={track.id} className="flex gap-3 pb-3">
-                                    <div className="flex flex-col items-center">
-                                      <div className={`w-2.5 h-2.5 rounded-full mt-1.5 ${index === 0 ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
-                                      {index < Math.min(order.order_tracking.length - 1, 4) && (
-                                        <div className="w-0.5 flex-1 bg-muted-foreground/20 mt-1" />
+                                <h4 className="text-sm font-semibold text-foreground mb-3">Status Updates</h4>
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr className="border-b border-border">
+                                        <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium w-28">Time</th>
+                                        <th className="text-left py-1.5 pr-3 text-muted-foreground font-medium w-32">Status</th>
+                                        <th className="text-left py-1.5 text-muted-foreground font-medium">Info</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {order.order_tracking.length > 0 ? (
+                                        order.order_tracking.map((track, index) => (
+                                          <tr key={track.id} className="border-b border-border/50">
+                                            <td className="py-2 pr-3 text-muted-foreground align-top whitespace-nowrap">
+                                              {format(new Date(track.created_at), 'MMM d h:mm a')}
+                                            </td>
+                                            <td className="py-2 pr-3 align-top">
+                                              <span className={`font-medium ${index === order.order_tracking.length - 1 ? 'text-primary' : 'text-foreground'}`}>
+                                                {statusConfig[track.status]?.label || track.status}
+                                              </span>
+                                            </td>
+                                            <td className="py-2 text-muted-foreground align-top">
+                                              {track.notes || getAutoNote(track.status, order.order_items)}
+                                              {track.location_name && (
+                                                <span className="block text-[10px] text-muted-foreground/60 mt-0.5">{track.location_name}</span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        ))
+                                      ) : (
+                                        // Show current status as a single entry
+                                        <tr className="border-b border-border/50">
+                                          <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">
+                                            {format(new Date(order.created_at), 'MMM d h:mm a')}
+                                          </td>
+                                          <td className="py-2 pr-3">
+                                            <span className="font-medium text-primary">
+                                              {statusConfig[order.status]?.label || order.status}
+                                            </span>
+                                          </td>
+                                          <td className="py-2 text-muted-foreground">
+                                            {getAutoNote(order.status, order.order_items)}
+                                          </td>
+                                        </tr>
                                       )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className={`text-xs font-medium ${index === 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
-                                        {track.status}
-                                      </p>
-                                      {track.location_name && (
-                                        <p className="text-[11px] text-muted-foreground">{track.location_name}</p>
-                                      )}
-                                      <p className="text-[11px] text-muted-foreground">
-                                        {format(new Date(track.created_at), 'MMM d, yyyy · h:mm a')}
-                                      </p>
-                                    </div>
-                                  </div>
-                                ))}
+                                    </tbody>
+                                  </table>
+                                </div>
                               </div>
                             )}
 
@@ -467,7 +620,7 @@ export default function MyOrders() {
 
                             <Separator />
 
-                            {/* Actions */}
+                            {/* Actions - Always visible, not hidden in dropdown */}
                             <div className="flex flex-wrap gap-2">
                               {order.status === 'pending' && (
                                 <Button
@@ -489,15 +642,7 @@ export default function MyOrders() {
                               {(order.status === 'ready_for_delivery' || order.status === 'out_for_delivery') && (
                                 <Button
                                   size="sm"
-                                  onClick={async () => {
-                                    const { error } = await supabase
-                                      .from('orders')
-                                      .update({ status: 'delivered', updated_at: new Date().toISOString() })
-                                      .eq('id', order.id)
-                                      .eq('user_id', user!.id);
-                                    if (error) toast.error('Failed to confirm delivery');
-                                    else { toast.success('Delivery confirmed!'); fetchOrders(); }
-                                  }}
+                                  onClick={() => handleConfirmDelivery(order)}
                                 >
                                   <CheckCircle className="h-3.5 w-3.5 mr-1" />
                                   Confirm Delivery
@@ -530,18 +675,30 @@ export default function MyOrders() {
                                 </Button>
                               </Link>
                               <OrderInvoice order={order} />
+                              
+                              {/* Buy Again & Review - always visible for delivered */}
                               {order.status === 'delivered' && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    toast.success('Items added to cart! Redirecting...');
-                                    navigate('/cart');
-                                  }}
-                                >
-                                  <ShoppingBag className="h-3.5 w-3.5 mr-1" />
-                                  Buy Again
-                                </Button>
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => {
+                                      toast.success('Items added to cart! Redirecting...');
+                                      navigate('/cart');
+                                    }}
+                                  >
+                                    <ShoppingBag className="h-3.5 w-3.5 mr-1" />
+                                    Buy Again
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setReviewDialogOrder(order)}
+                                  >
+                                    <Star className="h-3.5 w-3.5 mr-1" />
+                                    Leave Review
+                                  </Button>
+                                </>
                               )}
                             </div>
 
@@ -595,6 +752,56 @@ export default function MyOrders() {
         </Tabs>
       </main>
       <Footer />
+
+      {/* Review Dialog */}
+      <Dialog open={!!reviewDialogOrder} onOpenChange={(open) => !open && setReviewDialogOrder(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>How was your order?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Rate your experience with {reviewDialogOrder?.order_items[0]?.product_name || 'this order'}
+            </p>
+            <div className="flex items-center gap-1 justify-center">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setReviewRating(star)}
+                  className="focus:outline-none"
+                >
+                  <Star
+                    className={`h-8 w-8 cursor-pointer transition-colors ${
+                      star <= reviewRating
+                        ? 'fill-primary text-primary'
+                        : 'text-muted-foreground hover:text-primary'
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+            <div>
+              <Label>Comment (optional)</Label>
+              <Textarea
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                placeholder="Share your experience..."
+                className="mt-1"
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleSubmitReview} disabled={reviewSubmitting} className="flex-1">
+                {reviewSubmitting ? 'Submitting...' : 'Submit Review'}
+              </Button>
+              <Button variant="outline" onClick={() => setReviewDialogOrder(null)}>
+                Later
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
