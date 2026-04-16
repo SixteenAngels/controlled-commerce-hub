@@ -640,27 +640,39 @@ export function AdminOrders() {
 
                     {/* Actions */}
                     <div className="flex flex-wrap gap-2">
-                      <Select
-                        value={order.status || 'pending'}
-                        onValueChange={(value) => updateStatusMutation.mutate({ 
-                          orderId: order.id, 
-                          status: value as OrderStatus,
-                          userId: order.user_id,
-                          orderNumber: order.order_number 
-                        })}
-                        disabled={updateStatusMutation.isPending}
-                      >
-                        <SelectTrigger className="w-full sm:w-52">
-                          <SelectValue placeholder="Update status" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-popover z-50">
-                          {ORDER_STATUSES.map((status) => (
-                            <SelectItem key={status} value={status}>
-                              {STATUS_LABELS[status]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {/* Status Update with Custom Note */}
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap gap-2">
+                          <Select
+                            value={order.status || 'pending'}
+                            onValueChange={(value) => updateStatusMutation.mutate({ 
+                              orderId: order.id, 
+                              status: value as OrderStatus,
+                              userId: order.user_id,
+                              orderNumber: order.order_number,
+                              customNote: statusNotes[order.id] || undefined,
+                            })}
+                            disabled={updateStatusMutation.isPending}
+                          >
+                            <SelectTrigger className="w-full sm:w-52">
+                              <SelectValue placeholder="Update status" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-popover z-50">
+                              {ORDER_STATUSES.map((status) => (
+                                <SelectItem key={status} value={status}>
+                                  {STATUS_LABELS[status]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Input
+                          placeholder="Add a note for the customer (optional)..."
+                          value={statusNotes[order.id] || ''}
+                          onChange={(e) => setStatusNotes(prev => ({ ...prev, [order.id]: e.target.value }))}
+                          className="text-sm"
+                        />
+                      </div>
 
                       {/* Set Estimated Delivery Dialog */}
                       <Dialog>
