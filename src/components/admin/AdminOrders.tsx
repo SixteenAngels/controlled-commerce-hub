@@ -365,6 +365,7 @@ export function AdminOrders() {
       case 'pending': return 'bg-muted text-muted-foreground';
       case 'payment_received': return 'bg-green-100 text-green-800';
       case 'order_placed': return 'bg-blue-100 text-blue-800';
+      case 'order_processed': return 'bg-blue-200 text-blue-900';
       case 'confirmed': return 'bg-primary/20 text-primary';
       case 'processing': return 'bg-accent text-accent-foreground';
       case 'packed_for_delivery': return 'bg-purple-100 text-purple-800';
@@ -372,6 +373,7 @@ export function AdminOrders() {
       case 'in_transit': return 'bg-primary/40 text-primary';
       case 'in_ghana': return 'bg-orange-100 text-orange-800';
       case 'ready_for_delivery': return 'bg-cyan-100 text-cyan-800';
+      case 'handed_to_courier': return 'bg-indigo-100 text-indigo-800';
       case 'out_for_delivery': return 'bg-primary/50 text-primary-foreground';
       case 'delivered': return 'bg-primary text-primary-foreground';
       case 'cancelled': return 'bg-destructive/20 text-destructive';
