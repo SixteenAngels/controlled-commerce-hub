@@ -794,11 +794,37 @@ export function AdminOrders() {
                           </DialogHeader>
                           <div className="space-y-4">
                             <div className="space-y-2">
-                              <Label>Location Name</Label>
+                              <Label>Location / Description</Label>
                               <Input
                                 value={trackingLocation.location}
                                 onChange={(e) => setTrackingLocation(prev => ({ ...prev, location: e.target.value }))}
                                 placeholder="e.g., Arrived at warehouse"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-2">
+                                <Label>Courier Name (optional)</Label>
+                                <Input
+                                  value={trackingLocation.courierName}
+                                  onChange={(e) => setTrackingLocation(prev => ({ ...prev, courierName: e.target.value }))}
+                                  placeholder="e.g., DHL, FedEx"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Courier Tracking # (optional)</Label>
+                                <Input
+                                  value={trackingLocation.courierTrackingNumber}
+                                  onChange={(e) => setTrackingLocation(prev => ({ ...prev, courierTrackingNumber: e.target.value }))}
+                                  placeholder="e.g., DHL123456"
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Delivery Fee (optional)</Label>
+                              <Input
+                                value={trackingLocation.deliveryFee}
+                                onChange={(e) => setTrackingLocation(prev => ({ ...prev, deliveryFee: e.target.value }))}
+                                placeholder="e.g., 50.00"
                               />
                             </div>
                             <div className="grid grid-cols-2 gap-2">
@@ -820,21 +846,36 @@ export function AdminOrders() {
                               </div>
                             </div>
                             <div className="space-y-2">
-                              <Label>Notes (optional)</Label>
-                              <Input
+                              <Label>Notes for Customer</Label>
+                              <Textarea
                                 value={trackingLocation.notes}
                                 onChange={(e) => setTrackingLocation(prev => ({ ...prev, notes: e.target.value }))}
+                                placeholder="Custom note visible to the customer..."
+                                rows={2}
                               />
                             </div>
                             <Button
-                              onClick={() => addTrackingMutation.mutate({
-                                orderId: order.id,
-                                status: order.status || 'pending',
-                                location_name: trackingLocation.location,
-                                latitude: trackingLocation.lat ? parseFloat(trackingLocation.lat) : undefined,
-                                longitude: trackingLocation.lng ? parseFloat(trackingLocation.lng) : undefined,
-                                notes: trackingLocation.notes || undefined,
-                              })}
+                              onClick={() => {
+                                // Build comprehensive notes
+                                let fullNotes = trackingLocation.notes || '';
+                                if (trackingLocation.courierName) {
+                                  fullNotes = `[${trackingLocation.courierName}] ${fullNotes}`;
+                                }
+                                if (trackingLocation.courierTrackingNumber) {
+                                  fullNotes += ` Tracking: ${trackingLocation.courierTrackingNumber}`;
+                                }
+                                if (trackingLocation.deliveryFee) {
+                                  fullNotes += ` | Delivery fee: ₵${trackingLocation.deliveryFee}`;
+                                }
+                                addTrackingMutation.mutate({
+                                  orderId: order.id,
+                                  status: order.status || 'pending',
+                                  location_name: trackingLocation.location,
+                                  latitude: trackingLocation.lat ? parseFloat(trackingLocation.lat) : undefined,
+                                  longitude: trackingLocation.lng ? parseFloat(trackingLocation.lng) : undefined,
+                                  notes: fullNotes.trim() || undefined,
+                                });
+                              }}
                               disabled={!trackingLocation.location}
                             >
                               Add Tracking
