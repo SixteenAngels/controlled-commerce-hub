@@ -84,9 +84,10 @@ export function AdminOrders() {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
-  const [trackingLocation, setTrackingLocation] = useState({ lat: '', lng: '', location: '', notes: '' });
+  const [trackingLocation, setTrackingLocation] = useState({ lat: '', lng: '', location: '', notes: '', courierName: '', courierTrackingNumber: '', deliveryFee: '' });
   const [deliveryDates, setDeliveryDates] = useState<{ orderId: string; start: string; end: string }>({ orderId: '', start: '', end: '' });
   const [newOrderAlert, setNewOrderAlert] = useState(false);
+  const [statusNotes, setStatusNotes] = useState<Record<string, string>>({});
 
   // Real-time subscription for new/updated orders
   useEffect(() => {
