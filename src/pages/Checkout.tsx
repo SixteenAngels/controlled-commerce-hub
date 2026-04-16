@@ -351,6 +351,12 @@ export default function Checkout() {
       toast.error('Please select a shipping method');
       return;
     }
+    // Check courier acknowledgment
+    const isCourierShipping = selectedShipping?.name.toLowerCase().includes('courier');
+    if (isCourierShipping && !courierAcknowledged) {
+      toast.error('Please acknowledge the courier delivery fee terms');
+      return;
+    }
     if (!user?.email) {
       toast.error('User email not found');
       return;
