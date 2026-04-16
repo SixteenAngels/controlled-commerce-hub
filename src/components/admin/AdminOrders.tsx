@@ -189,7 +189,7 @@ export function AdminOrders() {
   };
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ orderId, status, userId, orderNumber }: { orderId: string; status: OrderStatus; userId?: string; orderNumber?: string }) => {
+    mutationFn: async ({ orderId, status, userId, orderNumber, customNote }: { orderId: string; status: OrderStatus; userId?: string; orderNumber?: string; customNote?: string }) => {
       const { error } = await supabase
         .from('orders')
         .update({ status, updated_at: new Date().toISOString() })
@@ -199,6 +199,36 @@ export function AdminOrders() {
         console.error('Update error:', error);
         throw error;
       }
+
+      // Auto-create tracking entry with note
+      const autoNotes: Record<string, string> = {
+        payment_received: "We've received your payment. Thank you!",
+        order_placed: 'Your order has been placed successfully.',
+        order_processed: 'Item verified and packed. Preparing for courier pickup.',
+        confirmed: 'Your order has been confirmed.',
+        processing: 'Your order is being processed.',
+        packed_for_delivery: 'Your order has been packed and is ready for shipping.',
+        shipped: 'Your order has been shipped!',
+        in_transit: 'Your order is on its way.',
+        in_ghana: 'Your order has arrived in Ghana!',
+        ready_for_delivery: 'Your order is ready for pickup/delivery.',
+        handed_to_courier: 'Courier has picked up your package.',
+        out_for_delivery: 'Your order is on the way to your location.',
+        delivered: 'Item received. Enjoy!',
+        cancelled: 'Your order has been cancelled.',
+        refunded: 'Your order has been refunded.',
+      };
+
+      const trackingNote = customNote 
+        ? (autoNotes[status] ? `${autoNotes[status]} — ${customNote}` : customNote)
+        : (autoNotes[status] || '');
+
+      await supabase.from('order_tracking').insert({
+        order_id: orderId,
+        status: status,
+        location_name: STATUS_LABELS[status],
+        notes: trackingNote,
+      });
 
       const statusMessages: Record<OrderStatus, string> = {
         pending: 'Your order is pending confirmation.',
@@ -220,10 +250,14 @@ export function AdminOrders() {
       };
 
       if (userId) {
+        const message = customNote 
+          ? `${statusMessages[status]} Note: ${customNote}`
+          : statusMessages[status];
+          
         await supabase.from('notifications').insert({
           user_id: userId,
           title: `Order Status: ${STATUS_LABELS[status]}`,
-          message: statusMessages[status],
+          message,
           type: 'order_status',
           data: { orderId, status },
         });
@@ -245,6 +279,7 @@ export function AdminOrders() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
       toast.success('Order status updated and customer notified');
+      setStatusNotes({});
     },
     onError: (error: Error) => {
       console.error('Mutation error:', error);
