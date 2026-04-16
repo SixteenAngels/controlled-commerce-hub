@@ -798,37 +798,64 @@ export default function Checkout() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <RadioGroup value={selectedShippingId} onValueChange={setSelectedShippingId}>
+                <RadioGroup value={selectedShippingId} onValueChange={(id) => {
+                  setSelectedShippingId(id);
+                  setCourierAcknowledged(false);
+                }}>
                   <div className="space-y-3">
-                    {shippingClasses.map((shipping) => (
-                      <div
-                        key={shipping.id}
-                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                          selectedShippingId === shipping.id
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border hover:border-primary/50'
-                        }`}
-                        onClick={() => setSelectedShippingId(shipping.id)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <RadioGroupItem value={shipping.id} id={shipping.id} />
-                            <div className="text-primary">
-                              {getShippingIcon(shipping.shipping_type?.name || '')}
+                    {shippingClasses.map((shipping) => {
+                      const isCourier = shipping.name.toLowerCase().includes('courier');
+                      return (
+                        <div
+                          key={shipping.id}
+                          className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                            selectedShippingId === shipping.id
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                          onClick={() => { setSelectedShippingId(shipping.id); setCourierAcknowledged(false); }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <RadioGroupItem value={shipping.id} id={shipping.id} />
+                              <div className="text-primary">
+                                {getShippingIcon(shipping.shipping_type?.name || shipping.name)}
+                              </div>
+                              <div>
+                                <p className="font-medium text-foreground">{shipping.name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {shipping.estimated_days_min}-{shipping.estimated_days_max} days delivery
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium text-foreground">{shipping.name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {shipping.estimated_days_min}-{shipping.estimated_days_max} days delivery
-                              </p>
-                            </div>
+                            <p className="font-semibold text-foreground">
+                              {formatPrice(shipping.base_price)}
+                            </p>
                           </div>
-                          <p className="font-semibold text-foreground">
-                            {formatPrice(shipping.base_price)}
-                          </p>
+                          {/* Courier acknowledgment checkbox */}
+                          {isCourier && selectedShippingId === shipping.id && (
+                            <div className="mt-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                              <div className="flex items-start gap-2">
+                                <Checkbox
+                                  id="courier-ack"
+                                  checked={courierAcknowledged}
+                                  onCheckedChange={(checked) => setCourierAcknowledged(!!checked)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="mt-0.5"
+                                />
+                                <label
+                                  htmlFor="courier-ack"
+                                  className="text-xs text-amber-800 dark:text-amber-200 cursor-pointer leading-relaxed"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <span className="font-semibold">I understand</span> that I will pay the courier service directly for delivery upon receipt.
+                                </label>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </RadioGroup>
               </CardContent>
