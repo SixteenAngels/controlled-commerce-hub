@@ -69,7 +69,7 @@ export function WelcomeModal() {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-2xl font-serif">
-            {step === 1 && 'Welcome to Ihsan! 🎉'}
+            {step === 1 && 'Welcome to Ihsan!'}
             {step === 2 && 'What interests you?'}
             {step === 3 && 'Stay updated'}
           </DialogTitle>

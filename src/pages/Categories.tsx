@@ -153,7 +153,7 @@ export default function Categories() {
                               {product.name}
                             </h3>
                             <p className="text-primary font-bold">
-                              ₦{product.base_price.toLocaleString()}
+                              ₵{product.base_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </p>
                           </CardContent>
                         </Card>
