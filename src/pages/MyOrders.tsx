@@ -487,8 +487,6 @@ export default function MyOrders() {
     setReviewComment('');
   };
 
-  const _unused = () => {
-
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background">
