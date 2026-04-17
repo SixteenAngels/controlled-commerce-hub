@@ -1,30 +1,68 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { CartItem, Product, ProductVariant, ShippingOption } from '@/types';
 
 interface CartContextType {
   items: CartItem[];
   selectedShipping: ShippingOption | null;
-  addToCart: (product: Product, variant: ProductVariant, quantity?: number) => void;
+  selectedItemIds: string[];
+  addToCart: (product: Product, variant: ProductVariant | null, quantity?: number) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
+  updateVariant: (itemId: string, variant: ProductVariant) => void;
   clearCart: () => void;
   setShipping: (shipping: ShippingOption) => void;
+  toggleItemSelection: (itemId: string) => void;
+  setSelectedItemIds: (ids: string[]) => void;
   totalItems: number;
   subtotal: number;
   shippingCost: number;
   total: number;
 }
 
+const STORAGE_KEY = 'ihsan_cart_v2';
+
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItem[]>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
   const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(null);
+  const [selectedItemIds, setSelectedItemIdsState] = useState<string[]>([]);
 
-  const addToCart = (product: Product, variant: ProductVariant, quantity = 1) => {
+  // Persist cart to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    } catch {
+      // ignore quota errors
+    }
+  }, [items]);
+
+  // Default-select all items whenever the cart changes
+  useEffect(() => {
+    setSelectedItemIdsState(items.map((i) => i.id));
+  }, [items.length]);
+
+  const addToCart = (product: Product, variant: ProductVariant | null, quantity = 1) => {
     setItems((prev) => {
+      // Build a synthetic "not selected" variant when none provided
+      const effectiveVariant: ProductVariant =
+        variant ?? {
+          id: `__novariant__${product.id}`,
+          color: undefined,
+          size: undefined,
+          price: product.basePrice,
+          stock: 0,
+        };
+
       const existingItem = prev.find(
-        (item) => item.product.id === product.id && item.variant.id === variant.id
+        (item) => item.product.id === product.id && item.variant.id === effectiveVariant.id
       );
 
       if (existingItem) {
@@ -38,9 +76,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return [
         ...prev,
         {
-          id: `${product.id}-${variant.id}-${Date.now()}`,
+          id: `${product.id}-${effectiveVariant.id}-${Date.now()}`,
           product,
-          variant,
+          variant: effectiveVariant,
           quantity,
         },
       ];
@@ -61,6 +99,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const updateVariant = (itemId: string, variant: ProductVariant) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === itemId ? { ...item, variant } : item))
+    );
+  };
+
   const clearCart = () => {
     setItems([]);
     setSelectedShipping(null);
@@ -69,6 +113,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const setShipping = (shipping: ShippingOption) => {
     setSelectedShipping(shipping);
   };
+
+  const toggleItemSelection = (itemId: string) => {
+    setSelectedItemIdsState((prev) =>
+      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
+    );
+  };
+
+  const setSelectedItemIds = (ids: string[]) => setSelectedItemIdsState(ids);
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = items.reduce(
@@ -83,11 +135,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       value={{
         items,
         selectedShipping,
+        selectedItemIds,
         addToCart,
         removeFromCart,
         updateQuantity,
+        updateVariant,
         clearCart,
         setShipping,
+        toggleItemSelection,
+        setSelectedItemIds,
         totalItems,
         subtotal,
         shippingCost,
@@ -105,4 +161,9 @@ export function useCart() {
     throw new Error('useCart must be used within a CartProvider');
   }
   return context;
+}
+
+// Helper for components that need to know whether a cart item has a real variant chosen
+export function isVariantPlaceholder(variantId: string): boolean {
+  return variantId.startsWith('__novariant__');
 }
