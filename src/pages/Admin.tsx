@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useNavigate, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Package, FolderTree, Users, LayoutDashboard, ShoppingCart, Truck, Tag, Star, MessageCircle, FileText, Bell, Settings, AlertTriangle, RefreshCcw, HelpCircle, Award, Link2 } from 'lucide-react';
+import { Loader2, Package, FolderTree, Users, LayoutDashboard, ShoppingCart, Truck, Tag, Star, MessageCircle, FileText, Bell, Settings, AlertTriangle, RefreshCcw, HelpCircle, Award, Link2, Wallet, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AdminProducts } from '@/components/admin/AdminProducts';
 import { AdminCategories } from '@/components/admin/AdminCategories';
@@ -22,6 +22,8 @@ import { AdminQA } from '@/components/admin/AdminQA';
 import { CustomerLeaderboard } from '@/components/admin/CustomerLeaderboard';
 import { AdminBundles } from '@/components/admin/AdminBundles';
 import { AdminLoyalty } from '@/components/admin/AdminLoyalty';
+import { AdminWallet } from '@/components/admin/AdminWallet';
+import { AdminMessageTemplates } from '@/components/admin/AdminMessageTemplates';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -38,6 +40,8 @@ const ALL_NAV_ITEMS = [
   { name: 'Promotions', href: '/admin/promotions', icon: Tag, permission: 'promotions' },
   { name: 'Bundles', href: '/admin/bundles', icon: Link2, permission: 'bundles' },
   { name: 'Loyalty', href: '/admin/loyalty', icon: Award, permission: 'loyalty' },
+  { name: 'Wallets', href: '/admin/wallets', icon: Wallet, permission: 'wallets' },
+  { name: 'Templates', href: '/admin/templates', icon: MessageSquare, permission: 'templates' },
   { name: 'Reviews', href: '/admin/reviews', icon: Star, permission: 'reviews' },
   { name: 'Q&A', href: '/admin/qa', icon: HelpCircle, permission: 'qa' },
   { name: 'Leaderboard', href: '/admin/leaderboard', icon: Star, permission: 'leaderboard' },
@@ -183,6 +187,8 @@ export default function Admin() {
           <Route path="/promotions" element={<AdminPromotions />} />
           <Route path="/bundles" element={<AdminBundles />} />
           <Route path="/loyalty" element={<AdminLoyalty />} />
+          <Route path="/wallets" element={<AdminWallet />} />
+          <Route path="/templates" element={<AdminMessageTemplates />} />
           <Route path="/reviews" element={<AdminReviews />} />
           <Route path="/qa" element={<AdminQA />} />
           <Route path="/leaderboard" element={<CustomerLeaderboard />} />
