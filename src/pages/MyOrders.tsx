@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, Truck, MapPin, Clock, CheckCircle, XCircle, Loader, ChevronDown, ChevronUp, Phone, CreditCard, ShoppingBag, PackageCheck, Plane, MapPinned, Ban, Users, Star, MessageSquare } from 'lucide-react';
+import { Package, Truck, MapPin, Clock, CheckCircle, XCircle, Loader, ChevronDown, ChevronUp, Phone, CreditCard, ShoppingBag, PackageCheck, Plane, MapPinned, Ban, Users, Star, MessageSquare, Eye } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/contexts/CartContext';
 import { useCurrency } from '@/hooks/useCurrency';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { OrderInvoice } from '@/components/orders/OrderInvoice';
+import { RefundRequestDialog } from '@/components/orders/RefundRequestDialog';
 
 interface OrderItem {
   id: string;
@@ -57,6 +59,7 @@ interface Order {
   subtotal: number;
   shipping_price: number;
   created_at: string;
+  updated_at?: string;
   estimated_delivery_start: string;
   estimated_delivery_end: string;
   shipping_address: ShippingAddress | null;
@@ -187,11 +190,12 @@ function getAutoNote(status: string, orderItems: OrderItem[]): string {
 export default function MyOrders() {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
+  const { addToCart } = useCart();
   const { formatPrice } = useCurrency();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
-  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [detailsOrderId, setDetailsOrderId] = useState<string | null>(null);
   const [productImages, setProductImages] = useState<Record<string, string>>({});
   const [shippingClassNames, setShippingClassNames] = useState<Record<string, string>>({});
   const [reviewDialogOrder, setReviewDialogOrder] = useState<Order | null>(null);
@@ -307,7 +311,72 @@ export default function MyOrders() {
   };
 
   const toggleOrderExpansion = (orderId: string) => {
-    setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
+    setDetailsOrderId(detailsOrderId === orderId ? null : orderId);
+  };
+
+  const handleBuyAgain = async (order: Order) => {
+    // Look up products + variants for each order item, then add to local cart
+    const variantIds = order.order_items.map((i) => i.product_variant_id);
+    if (variantIds.length === 0) return;
+
+    const { data: variantRows } = await supabase
+      .from('product_variants')
+      .select('id, product_id, color, size, price_override, stock')
+      .in('id', variantIds);
+
+    if (!variantRows || variantRows.length === 0) {
+      toast.error('Some products are no longer available.');
+      return;
+    }
+
+    const productIds = [...new Set(variantRows.map((v) => v.product_id))];
+    const { data: productRows } = await supabase
+      .from('products')
+      .select('id, name, description, base_price, is_group_buy_eligible, is_flash_deal, is_free_shipping, rating, review_count, product_images(image_url, order_index)')
+      .in('id', productIds);
+
+    if (!productRows) return;
+
+    let added = 0;
+    for (const item of order.order_items) {
+      const variant = variantRows.find((v) => v.id === item.product_variant_id);
+      if (!variant) continue;
+      const productRow: any = productRows.find((p) => p.id === variant.product_id);
+      if (!productRow) continue;
+      const images = (productRow.product_images || [])
+        .sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0))
+        .map((i: any) => i.image_url);
+      const cartProduct = {
+        id: productRow.id,
+        name: productRow.name,
+        description: productRow.description || '',
+        category: '',
+        basePrice: Number(productRow.base_price),
+        images: images.length > 0 ? images : ['https://via.placeholder.com/400'],
+        variants: [],
+        shippingOptions: [],
+        isGroupBuyEligible: !!productRow.is_group_buy_eligible,
+        isFlashDeal: !!productRow.is_flash_deal,
+        isFreeShippingEligible: !!productRow.is_free_shipping,
+        rating: Number(productRow.rating) || 0,
+        reviewCount: productRow.review_count || 0,
+      };
+      const cartVariant = {
+        id: variant.id,
+        size: variant.size || undefined,
+        color: variant.color || undefined,
+        price: variant.price_override != null ? Number(variant.price_override) : Number(productRow.base_price),
+        stock: variant.stock || 0,
+      };
+      addToCart(cartProduct as any, cartVariant as any, item.quantity);
+      added++;
+    }
+    if (added > 0) {
+      toast.success(`Added ${added} item(s) to cart`);
+      navigate('/cart');
+    } else {
+      toast.error('Could not re-add items.');
+    }
   };
 
   const isCancelledStatus = (status: string) => ['cancelled', 'refunded'].includes(status);
@@ -359,6 +428,60 @@ export default function MyOrders() {
       toast.success('Review submitted! It will appear after approval.');
     }
     setReviewSubmitting(false);
+    setReviewDialogOrder(null);
+    setReviewRating(5);
+    setReviewComment('');
+  };
+
+  // Schedule a review prompt 72 hours after delivery confirmation.
+  // Triggered when the orders list loads — checks for delivered orders without a review.
+  useEffect(() => {
+    if (!user || orders.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const delivered = orders.filter((o) => o.status === 'delivered');
+      if (delivered.length === 0) return;
+
+      const orderIds = delivered.map((o) => o.id);
+      const { data: existingReviews } = await supabase
+        .from('reviews')
+        .select('order_id')
+        .in('order_id', orderIds)
+        .eq('user_id', user.id);
+
+      if (cancelled) return;
+      const reviewedOrderIds = new Set((existingReviews || []).map((r) => r.order_id));
+
+      const SEVENTY_TWO_HOURS = 72 * 60 * 60 * 1000;
+      const now = Date.now();
+      const dismissedKey = `review_prompt_dismissed`;
+      const dismissed: string[] = JSON.parse(localStorage.getItem(dismissedKey) || '[]');
+
+      // Find first eligible delivered order not yet reviewed and >=72h old
+      const eligible = delivered.find((o) => {
+        if (reviewedOrderIds.has(o.id)) return false;
+        if (dismissed.includes(o.id)) return false;
+        const age = now - new Date(o.updated_at || o.created_at).getTime();
+        return age >= SEVENTY_TWO_HOURS;
+      });
+      if (eligible && !reviewDialogOrder) {
+        setReviewDialogOrder(eligible);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders, user]);
+
+  const dismissReviewPrompt = () => {
+    if (reviewDialogOrder) {
+      const key = 'review_prompt_dismissed';
+      const dismissed: string[] = JSON.parse(localStorage.getItem(key) || '[]');
+      if (!dismissed.includes(reviewDialogOrder.id)) {
+        dismissed.push(reviewDialogOrder.id);
+        localStorage.setItem(key, JSON.stringify(dismissed));
+      }
+    }
     setReviewDialogOrder(null);
     setReviewRating(5);
     setReviewComment('');
@@ -429,7 +552,7 @@ export default function MyOrders() {
             ) : (
               <div className="space-y-4">
                 {filteredOrders.map((order) => {
-                  const isExpanded = expandedOrderId === order.id;
+                  const isExpanded = detailsOrderId === order.id;
                   const isCancelled = isCancelledStatus(order.status);
                   const checkpoints = getCheckpointsForOrder(order, shippingClassNames);
                   return (

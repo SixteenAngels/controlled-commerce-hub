@@ -65,6 +65,36 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_message_templates: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       backup_recovery_codes: {
         Row: {
           code_hash: string
@@ -687,6 +717,8 @@ export type Database = {
           is_group_buy_master: boolean | null
           notes: string | null
           order_number: string
+          packaging_cost: number | null
+          packaging_type: string | null
           parent_order_id: string | null
           payment_reference: string | null
           shipping_address: Json | null
@@ -697,6 +729,7 @@ export type Database = {
           total_amount: number
           updated_at: string
           user_id: string
+          wallet_credit_used: number | null
         }
         Insert: {
           admin_notes?: string | null
@@ -708,6 +741,8 @@ export type Database = {
           is_group_buy_master?: boolean | null
           notes?: string | null
           order_number: string
+          packaging_cost?: number | null
+          packaging_type?: string | null
           parent_order_id?: string | null
           payment_reference?: string | null
           shipping_address?: Json | null
@@ -718,6 +753,7 @@ export type Database = {
           total_amount: number
           updated_at?: string
           user_id: string
+          wallet_credit_used?: number | null
         }
         Update: {
           admin_notes?: string | null
@@ -729,6 +765,8 @@ export type Database = {
           is_group_buy_master?: boolean | null
           notes?: string | null
           order_number?: string
+          packaging_cost?: number | null
+          packaging_type?: string | null
           parent_order_id?: string | null
           payment_reference?: string | null
           shipping_address?: Json | null
@@ -739,6 +777,7 @@ export type Database = {
           total_amount?: number
           updated_at?: string
           user_id?: string
+          wallet_credit_used?: number | null
         }
         Relationships: [
           {
@@ -1010,6 +1049,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           is_flash_deal: boolean | null
+          is_fragile: boolean
           is_free_shipping: boolean | null
           is_group_buy_eligible: boolean | null
           is_ready_now: boolean | null
@@ -1017,6 +1057,7 @@ export type Database = {
           name: string
           product_number: string | null
           rating: number | null
+          reinforced_packaging_cost: number | null
           review_count: number | null
           updated_at: string
         }
@@ -1029,6 +1070,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_flash_deal?: boolean | null
+          is_fragile?: boolean
           is_free_shipping?: boolean | null
           is_group_buy_eligible?: boolean | null
           is_ready_now?: boolean | null
@@ -1036,6 +1078,7 @@ export type Database = {
           name: string
           product_number?: string | null
           rating?: number | null
+          reinforced_packaging_cost?: number | null
           review_count?: number | null
           updated_at?: string
         }
@@ -1048,6 +1091,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_flash_deal?: boolean | null
+          is_fragile?: boolean
           is_free_shipping?: boolean | null
           is_group_buy_eligible?: boolean | null
           is_ready_now?: boolean | null
@@ -1055,6 +1099,7 @@ export type Database = {
           name?: string
           product_number?: string | null
           rating?: number | null
+          reinforced_packaging_cost?: number | null
           review_count?: number | null
           updated_at?: string
         }
@@ -1500,6 +1545,39 @@ export type Database = {
           last_active_at?: string
           location?: string | null
           os?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          order_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          order_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          order_id?: string | null
+          type?: string
           user_id?: string
         }
         Relationships: []

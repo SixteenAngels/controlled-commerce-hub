@@ -134,11 +134,16 @@ export default function ProductDetail() {
 
   const handleAddToCart = () => {
     if (!product) return;
+    const cartProduct = toCartProduct(product);
+
+    // If no variants chosen but the product has variants, add a placeholder so
+    // the customer can choose at checkout.
     if (selectedVariants.length === 0) {
-      toast.error('Please select at least one variant');
+      addToCart(cartProduct, null, 1);
+      toast.success('Added to cart. Choose variant at checkout.');
       return;
     }
-    const cartProduct = toCartProduct(product);
+
     selectedVariants.forEach((variant) => {
       const cartVariant: ProductVariant = {
         id: variant.id,
@@ -348,29 +353,29 @@ export default function ProductDetail() {
                 </div>
               )}
               <div className="flex gap-3">
-                <Button size="lg" className="flex-1" variant="outline" onClick={handleAddToCart} disabled={selectedVariants.length === 0}>
+                <Button size="lg" className="flex-1" variant="outline" onClick={handleAddToCart}>
                   <ShoppingCart className="h-5 w-5 mr-2" />
                   Add to Cart
                 </Button>
                 <Button size="lg" className="flex-1" onClick={() => {
                   if (!product) return;
-                  if (selectedVariants.length === 0) {
-                    toast.error('Please select at least one variant');
-                    return;
-                  }
                   const cartProduct = toCartProduct(product);
-                  selectedVariants.forEach((variant) => {
-                    const cartVariant: ProductVariant = {
-                      id: variant.id,
-                      size: variant.size || undefined,
-                      color: variant.color || undefined,
-                      price: variant.price,
-                      stock: variant.stock || 0,
-                    };
-                    addToCart(cartProduct, cartVariant, variant.quantity);
-                  });
+                  if (selectedVariants.length === 0) {
+                    addToCart(cartProduct, null, 1);
+                  } else {
+                    selectedVariants.forEach((variant) => {
+                      const cartVariant: ProductVariant = {
+                        id: variant.id,
+                        size: variant.size || undefined,
+                        color: variant.color || undefined,
+                        price: variant.price,
+                        stock: variant.stock || 0,
+                      };
+                      addToCart(cartProduct, cartVariant, variant.quantity);
+                    });
+                  }
                   navigate('/checkout');
-                }} disabled={selectedVariants.length === 0}>
+                }}>
                   <Zap className="h-5 w-5 mr-2" />
                   Buy Now
                 </Button>
