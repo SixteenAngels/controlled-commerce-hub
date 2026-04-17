@@ -50,6 +50,8 @@ interface ProductForm {
   is_free_shipping: boolean;
   is_ready_now: boolean;
   is_active: boolean;
+  is_fragile: boolean;
+  reinforced_packaging_cost: string;
 }
 
 const defaultForm: ProductForm = {
@@ -64,6 +66,8 @@ const defaultForm: ProductForm = {
   is_free_shipping: false,
   is_ready_now: false,
   is_active: true,
+  is_fragile: false,
+  reinforced_packaging_cost: '',
 };
 
 export function AdminProducts() {
@@ -105,7 +109,9 @@ export function AdminProducts() {
         is_free_shipping: data.is_free_shipping,
         is_ready_now: data.is_ready_now,
         is_active: data.is_active,
-      }).select().single();
+        is_fragile: data.is_fragile,
+        reinforced_packaging_cost: data.reinforced_packaging_cost ? parseFloat(data.reinforced_packaging_cost) : null,
+      } as any).select().single();
       if (error) throw error;
 
       // Upload images if any
@@ -170,7 +176,9 @@ export function AdminProducts() {
           is_free_shipping: data.is_free_shipping,
           is_ready_now: data.is_ready_now,
           is_active: data.is_active,
-        })
+          is_fragile: data.is_fragile,
+          reinforced_packaging_cost: data.reinforced_packaging_cost ? parseFloat(data.reinforced_packaging_cost) : null,
+        } as any)
         .eq('id', id);
       if (error) throw error;
 
@@ -255,6 +263,8 @@ export function AdminProducts() {
         is_free_shipping: product.is_free_shipping || false,
         is_ready_now: product.is_ready_now || false,
         is_active: product.is_active ?? true,
+        is_fragile: (product as any).is_fragile || false,
+        reinforced_packaging_cost: (product as any).reinforced_packaging_cost != null ? String((product as any).reinforced_packaging_cost) : '',
       });
       setExistingImages(product.product_images || []);
       setPendingImages([]);
@@ -496,6 +506,36 @@ export function AdminProducts() {
                     setForm({ ...form, is_ready_now: checked })
                   }
                 />
+              </div>
+
+              <div className="rounded-lg border border-amber-500/50 p-3 bg-amber-500/5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="is_fragile" className="text-amber-700 dark:text-amber-300 font-semibold">Fragile Item</Label>
+                    <p className="text-xs text-muted-foreground">Customer will see Standard / Reinforced packaging choice at checkout</p>
+                  </div>
+                  <Switch
+                    id="is_fragile"
+                    checked={form.is_fragile}
+                    onCheckedChange={(checked) =>
+                      setForm({ ...form, is_fragile: checked })
+                    }
+                  />
+                </div>
+                {form.is_fragile && (
+                  <div className="space-y-2">
+                    <Label htmlFor="reinforced_packaging_cost">Reinforced Packaging Cost (₵) — leave blank to use store default</Label>
+                    <Input
+                      id="reinforced_packaging_cost"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.reinforced_packaging_cost}
+                      onChange={(e) => setForm({ ...form, reinforced_packaging_cost: e.target.value })}
+                      placeholder="e.g. 25.00"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Image Upload Section */}
