@@ -311,7 +311,7 @@ export default function MyOrders() {
   };
 
   const toggleOrderExpansion = (orderId: string) => {
-    setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
+    setDetailsOrderId(detailsOrderId === orderId ? null : orderId);
   };
 
   const handleBuyAgain = async (order: Order) => {
@@ -552,7 +552,7 @@ export default function MyOrders() {
             ) : (
               <div className="space-y-4">
                 {filteredOrders.map((order) => {
-                  const isExpanded = expandedOrderId === order.id;
+                  const isExpanded = detailsOrderId === order.id;
                   const isCancelled = isCancelledStatus(order.status);
                   const checkpoints = getCheckpointsForOrder(order, shippingClassNames);
                   return (
