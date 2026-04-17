@@ -59,6 +59,7 @@ interface Order {
   subtotal: number;
   shipping_price: number;
   created_at: string;
+  updated_at?: string;
   estimated_delivery_start: string;
   estimated_delivery_end: string;
   shipping_address: ShippingAddress | null;
