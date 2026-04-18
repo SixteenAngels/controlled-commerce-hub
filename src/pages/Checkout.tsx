@@ -16,6 +16,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useWalletBalance } from '@/hooks/useWallet';
+import { Wallet, Shield, AlertTriangle as AlertTriangleIcon } from 'lucide-react';
 
 interface Address {
   id: string;
