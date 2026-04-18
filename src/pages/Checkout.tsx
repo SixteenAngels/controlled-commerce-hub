@@ -1226,7 +1226,46 @@ export default function Checkout() {
         </DialogContent>
       </Dialog>
 
-      <Footer />
+      {/* Standard Packaging Damage Disclaimer */}
+      <Dialog open={showStandardWarning} onOpenChange={setShowStandardWarning}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangleIcon className="h-5 w-5 text-destructive" />
+              Damage Disclaimer
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-foreground">
+              By choosing <span className="font-semibold">Standard Packaging</span>, you accept full
+              responsibility for any physical damage during transit. No refunds or replacements
+              will be issued with this option.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  setPackagingChoice('reinforced');
+                  setShowStandardWarning(false);
+                }}
+              >
+                Switch to Reinforced
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setPackagingChoice('standard');
+                  setShowStandardWarning(false);
+                }}
+              >
+                Proceed Anyway
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
