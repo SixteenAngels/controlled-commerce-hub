@@ -557,11 +557,30 @@ export default function Checkout() {
           notes: null,
           estimated_delivery_start: new Date(Date.now() + (selectedShipping?.estimated_days_min || 7) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           estimated_delivery_end: new Date(Date.now() + (selectedShipping?.estimated_days_max || 14) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          packaging_type: hasFragile ? packagingChoice : null,
+          packaging_cost: reinforcedPackagingCost,
+          wallet_credit_used: walletApplied,
         }])
         .select()
         .single();
 
       if (orderError) throw orderError;
+
+      // Debit wallet if used
+      if (walletApplied > 0 && user?.id) {
+        try {
+          await (supabase as any).from('wallet_transactions').insert({
+            user_id: user.id,
+            amount: walletApplied,
+            type: 'debit',
+            description: `Used for order ${order.order_number}`,
+            order_id: order.id,
+            created_by: user.id,
+          });
+        } catch (e) {
+          console.error('Wallet debit failed (non-blocking):', e);
+        }
+      }
 
       // Create order items
       const orderItems = items.map(item => ({
