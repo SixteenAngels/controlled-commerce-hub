@@ -80,6 +80,16 @@ export default function Checkout() {
   const [courierAcknowledged, setCourierAcknowledged] = useState(false);
   const callbackFiredRef = useRef(false);
   const [orderCreationInProgress, setOrderCreationInProgress] = useState(false);
+
+  // Wallet redemption
+  const walletBalance = useWalletBalance();
+  const [useWalletCredit, setUseWalletCredit] = useState(false);
+
+  // Fragile / packaging — keyed by product_id
+  const [productMeta, setProductMeta] = useState<Record<string, { is_fragile: boolean; reinforced_cost: number; is_free_shipping: boolean }>>({});
+  const [globalReinforcedCost, setGlobalReinforcedCost] = useState<number>(0);
+  const [packagingChoice, setPackagingChoice] = useState<'standard' | 'reinforced'>('reinforced');
+  const [showStandardWarning, setShowStandardWarning] = useState(false);
   const [newAddress, setNewAddress] = useState({
     full_name: '',
     phone: '',
