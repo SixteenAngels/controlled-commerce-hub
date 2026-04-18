@@ -831,6 +831,11 @@ export default function Profile() {
             </Card>
           </TabsContent>
 
+          {/* Wallet Tab */}
+          <TabsContent value="wallet">
+            <WalletSection />
+          </TabsContent>
+
           {/* Refunds Tab */}
           <TabsContent value="refunds">
             <Card>
