@@ -12,10 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Loader2, Eye, MapPin, Package, Calendar, Clock, CreditCard, ShoppingBag, PackageCheck, Truck, Plane, MapPinned, Home, CheckCircle, XCircle, RotateCcw, Search, Download, StickyNote, CheckSquare, BellRing } from 'lucide-react';
+import { Loader2, Eye, MapPin, Package, Calendar, Clock, CreditCard, ShoppingBag, PackageCheck, Truck, Plane, MapPinned, Home, CheckCircle, XCircle, RotateCcw, Search, Download, StickyNote, CheckSquare, BellRing, MessageSquare } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useMessageTemplates } from '@/hooks/useMessageTemplates';
+import { SwipeableOrderCard } from './SwipeableOrderCard';
 
 const ORDER_STATUSES = [
   'pending',
@@ -80,6 +82,7 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
 export function AdminOrders() {
   const queryClient = useQueryClient();
   const { formatPrice } = useCurrency();
+  const { data: templates = [] } = useMessageTemplates();
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -508,8 +511,41 @@ export function AdminOrders() {
                 </CardContent>
               </Card>
             ) : (
-              filteredOrders.map((order) => (
-                <Card key={order.id}>
+              filteredOrders.map((order) => {
+                const currentIdx = ORDER_STATUSES.indexOf(order.status as OrderStatus);
+                const nextStatus = currentIdx >= 0 && currentIdx < ORDER_STATUSES.length - 1
+                  ? ORDER_STATUSES[currentIdx + 1]
+                  : undefined;
+                const prevStatus = currentIdx > 0 ? ORDER_STATUSES[currentIdx - 1] : undefined;
+                return (
+                <SwipeableOrderCard
+                  key={order.id}
+                  rightLabel={nextStatus ? `→ ${STATUS_LABELS[nextStatus]}` : 'No next status'}
+                  leftLabel={prevStatus ? `${STATUS_LABELS[prevStatus]} ←` : 'No previous status'}
+                  onSwipeRight={
+                    nextStatus
+                      ? () =>
+                          updateStatusMutation.mutate({
+                            orderId: order.id,
+                            status: nextStatus,
+                            userId: order.user_id,
+                            orderNumber: order.order_number,
+                          })
+                      : undefined
+                  }
+                  onSwipeLeft={
+                    prevStatus
+                      ? () =>
+                          updateStatusMutation.mutate({
+                            orderId: order.id,
+                            status: prevStatus,
+                            userId: order.user_id,
+                            orderNumber: order.order_number,
+                          })
+                      : undefined
+                  }
+                >
+                <Card>
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-3">
                       <input
@@ -668,6 +704,41 @@ export function AdminOrders() {
                             </SelectContent>
                           </Select>
                         </div>
+                        {templates.length > 0 && (
+                          <Select
+                            value=""
+                            onValueChange={(templateId) => {
+                              const tpl = templates.find((t) => t.id === templateId);
+                              if (!tpl) return;
+                              setStatusNotes((prev) => ({
+                                ...prev,
+                                [order.id]: prev[order.id]
+                                  ? `${prev[order.id]} ${tpl.content}`
+                                  : tpl.content,
+                              }));
+                              toast.success(`Inserted template: ${tpl.name}`);
+                            }}
+                          >
+                            <SelectTrigger className="w-full sm:w-52 text-sm">
+                              <div className="flex items-center gap-2">
+                                <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+                                <SelectValue placeholder="Insert template…" />
+                              </div>
+                            </SelectTrigger>
+                            <SelectContent className="bg-popover z-50 max-h-72">
+                              {templates.map((tpl) => (
+                                <SelectItem key={tpl.id} value={tpl.id}>
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{tpl.name}</span>
+                                    <span className="text-xs text-muted-foreground line-clamp-1">
+                                      {tpl.content}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                         <Input
                           placeholder="Add a note for the customer (optional)..."
                           value={statusNotes[order.id] || ''}
@@ -888,7 +959,9 @@ export function AdminOrders() {
                     </div>
                   </CardContent>
                 </Card>
-              ))
+                </SwipeableOrderCard>
+                );
+              })
             )}
           </div>
         </TabsContent>
