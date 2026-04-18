@@ -329,8 +329,10 @@ export default function Checkout() {
   };
 
   const selectedShipping = shippingClasses.find(s => s.id === selectedShippingId);
-  const shippingCost = selectedShipping?.base_price || 0;
-  
+  // Free shipping override: if every cart item is marked free shipping, force shipping cost to 0
+  const rawShippingCost = selectedShipping?.base_price || 0;
+  const shippingCost = allFreeShipping ? 0 : rawShippingCost;
+
   // Calculate discount
   const calculateDiscount = () => {
     if (!appliedCoupon) return 0;
@@ -339,9 +341,11 @@ export default function Checkout() {
     }
     return appliedCoupon.value;
   };
-  
+
   const discount = calculateDiscount();
-  const total = subtotal + shippingCost - discount;
+  const subtotalBeforeWallet = subtotal + shippingCost + reinforcedPackagingCost - discount;
+  const walletApplied = useWalletCredit ? Math.min(walletBalance, subtotalBeforeWallet) : 0;
+  const total = Math.max(0, subtotalBeforeWallet - walletApplied);
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
