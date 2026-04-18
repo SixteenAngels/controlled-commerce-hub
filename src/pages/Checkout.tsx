@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Plus, Ship, Plane, Package, CreditCard, Check, Tag, X, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, MapPin, Plus, Ship, Plane, Package, CreditCard, Check, Tag, X, AlertTriangle, Wallet, Shield } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useCart } from '@/contexts/CartContext';
@@ -17,7 +17,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useWalletBalance } from '@/hooks/useWallet';
-import { Wallet, Shield, AlertTriangle as AlertTriangleIcon } from 'lucide-react';
 
 interface Address {
   id: string;
@@ -1231,7 +1230,7 @@ export default function Checkout() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangleIcon className="h-5 w-5 text-destructive" />
+              <AlertTriangle className="h-5 w-5 text-destructive" />
               Damage Disclaimer
             </DialogTitle>
           </DialogHeader>
