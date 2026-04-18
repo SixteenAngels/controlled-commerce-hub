@@ -959,7 +959,9 @@ export function AdminOrders() {
                     </div>
                   </CardContent>
                 </Card>
-              ))
+                </SwipeableOrderCard>
+                );
+              })
             )}
           </div>
         </TabsContent>
