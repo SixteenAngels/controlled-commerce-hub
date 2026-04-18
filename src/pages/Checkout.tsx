@@ -1131,13 +1131,27 @@ export default function Checkout() {
                     <span className="text-foreground">{formatPrice(subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Shipping</span>
+                    <span className="text-muted-foreground">
+                      Shipping{allFreeShipping && rawShippingCost > 0 ? ' (free)' : ''}
+                    </span>
                     <span className="text-foreground">{formatPrice(shippingCost)}</span>
                   </div>
+                  {reinforcedPackagingCost > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Reinforced Packaging</span>
+                      <span className="text-foreground">{formatPrice(reinforcedPackagingCost)}</span>
+                    </div>
+                  )}
                   {appliedCoupon && (
                     <div className="flex justify-between text-sm text-green-600">
                       <span>Discount</span>
                       <span>-{formatPrice(discount)}</span>
+                    </div>
+                  )}
+                  {walletApplied > 0 && (
+                    <div className="flex justify-between text-sm text-primary">
+                      <span>Wallet Credit</span>
+                      <span>-{formatPrice(walletApplied)}</span>
                     </div>
                   )}
                   <Separator />
