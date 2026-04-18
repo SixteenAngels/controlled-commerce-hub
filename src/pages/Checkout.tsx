@@ -148,6 +148,54 @@ export default function Checkout() {
     return [...new Set(items.map(item => item.product.id))];
   }, [items]);
 
+  // Fetch product meta (fragile / reinforced cost / free shipping) + global default reinforced cost
+  useEffect(() => {
+    if (cartProductIds.length === 0) return;
+    (async () => {
+      const [{ data: products }, { data: settings }] = await Promise.all([
+        supabase
+          .from('products')
+          .select('id, is_fragile, reinforced_packaging_cost, is_free_shipping')
+          .in('id', cartProductIds),
+        supabase
+          .from('store_settings')
+          .select('value')
+          .eq('key', 'reinforcedPackagingCost')
+          .maybeSingle(),
+      ]);
+      const meta: Record<string, { is_fragile: boolean; reinforced_cost: number; is_free_shipping: boolean }> = {};
+      (products || []).forEach((p: any) => {
+        meta[p.id] = {
+          is_fragile: !!p.is_fragile,
+          reinforced_cost: Number(p.reinforced_packaging_cost) || 0,
+          is_free_shipping: !!p.is_free_shipping,
+        };
+      });
+      setProductMeta(meta);
+      const globalDefault = Number((settings as any)?.value) || 0;
+      setGlobalReinforcedCost(globalDefault);
+    })();
+  }, [cartProductIds.join(',')]);
+
+  // Cart-level fragile / free shipping detection
+  const hasFragile = items.some((it) => productMeta[it.product.id]?.is_fragile);
+  const allFreeShipping = items.length > 0 && items.every((it) =>
+    productMeta[it.product.id]?.is_free_shipping || it.product.isFreeShippingEligible
+  );
+
+  // Reinforced packaging cost = sum of per-product overrides, falling back to global default
+  const reinforcedPackagingCost = useMemo(() => {
+    if (!hasFragile || packagingChoice !== 'reinforced') return 0;
+    let total = 0;
+    items.forEach((it) => {
+      const m = productMeta[it.product.id];
+      if (!m?.is_fragile) return;
+      const cost = m.reinforced_cost > 0 ? m.reinforced_cost : globalReinforcedCost;
+      total += cost * it.quantity;
+    });
+    return total;
+  }, [items, productMeta, globalReinforcedCost, hasFragile, packagingChoice]);
+
   // Fetch shipping classes that are allowed for ALL products in cart
   const fetchShippingClasses = async () => {
     if (cartProductIds.length === 0) {
