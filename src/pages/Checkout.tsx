@@ -1266,6 +1266,7 @@ export default function Checkout() {
         </DialogContent>
       </Dialog>
 
+      <Footer />
     </div>
   );
 }
