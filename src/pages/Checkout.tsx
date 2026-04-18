@@ -950,7 +950,102 @@ export default function Checkout() {
               </CardContent>
             </Card>
 
-            {/* Order Items Summary */}
+            {/* Fragile Packaging */}
+            {hasFragile && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-primary" />
+                    Packaging for Fragile Items
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <RadioGroup
+                    value={packagingChoice}
+                    onValueChange={(v) => {
+                      if (v === 'standard') {
+                        setShowStandardWarning(true);
+                      } else {
+                        setPackagingChoice('reinforced');
+                      }
+                    }}
+                  >
+                    <div className="space-y-3">
+                      <div
+                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                          packagingChoice === 'reinforced' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                        }`}
+                        onClick={() => setPackagingChoice('reinforced')}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <RadioGroupItem value="reinforced" id="pack-reinforced" />
+                            <div>
+                              <p className="font-medium text-foreground">Reinforced Protection</p>
+                              <p className="text-sm text-muted-foreground">
+                                Extra cushioning and protection for fragile items.
+                              </p>
+                            </div>
+                          </div>
+                          <p className="font-semibold text-foreground">
+                            +{formatPrice(reinforcedPackagingCost || globalReinforcedCost)}
+                          </p>
+                        </div>
+                      </div>
+                      <div
+                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                          packagingChoice === 'standard' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                        }`}
+                        onClick={() => setShowStandardWarning(true)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <RadioGroupItem value="standard" id="pack-standard" />
+                            <div>
+                              <p className="font-medium text-foreground">Standard Packaging</p>
+                              <p className="text-sm text-muted-foreground">
+                                Factory packaging only — no extra protection.
+                              </p>
+                            </div>
+                          </div>
+                          <p className="font-semibold text-foreground">Free</p>
+                        </div>
+                      </div>
+                    </div>
+                  </RadioGroup>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Wallet credit */}
+            {walletBalance > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5 text-primary" />
+                    Wallet Credit
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <Checkbox
+                      checked={useWalletCredit}
+                      onCheckedChange={(c) => setUseWalletCredit(!!c)}
+                      className="mt-1"
+                    />
+                    <div>
+                      <p className="font-medium text-foreground">
+                        Use wallet credit ({formatPrice(walletBalance)} available)
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Apply your store credit toward this order. Cannot be withdrawn.
+                      </p>
+                    </div>
+                  </label>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle>Order Items ({items.length})</CardTitle>
