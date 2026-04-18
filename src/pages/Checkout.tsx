@@ -16,6 +16,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useWalletBalance } from '@/hooks/useWallet';
+import { Wallet, Shield, AlertTriangle as AlertTriangleIcon } from 'lucide-react';
 
 interface Address {
   id: string;
@@ -78,6 +80,16 @@ export default function Checkout() {
   const [courierAcknowledged, setCourierAcknowledged] = useState(false);
   const callbackFiredRef = useRef(false);
   const [orderCreationInProgress, setOrderCreationInProgress] = useState(false);
+
+  // Wallet redemption
+  const walletBalance = useWalletBalance();
+  const [useWalletCredit, setUseWalletCredit] = useState(false);
+
+  // Fragile / packaging — keyed by product_id
+  const [productMeta, setProductMeta] = useState<Record<string, { is_fragile: boolean; reinforced_cost: number; is_free_shipping: boolean }>>({});
+  const [globalReinforcedCost, setGlobalReinforcedCost] = useState<number>(0);
+  const [packagingChoice, setPackagingChoice] = useState<'standard' | 'reinforced'>('reinforced');
+  const [showStandardWarning, setShowStandardWarning] = useState(false);
   const [newAddress, setNewAddress] = useState({
     full_name: '',
     phone: '',
@@ -145,6 +157,54 @@ export default function Checkout() {
   const cartProductIds = useMemo(() => {
     return [...new Set(items.map(item => item.product.id))];
   }, [items]);
+
+  // Fetch product meta (fragile / reinforced cost / free shipping) + global default reinforced cost
+  useEffect(() => {
+    if (cartProductIds.length === 0) return;
+    (async () => {
+      const [{ data: products }, { data: settings }] = await Promise.all([
+        supabase
+          .from('products')
+          .select('id, is_fragile, reinforced_packaging_cost, is_free_shipping')
+          .in('id', cartProductIds),
+        supabase
+          .from('store_settings')
+          .select('value')
+          .eq('key', 'reinforcedPackagingCost')
+          .maybeSingle(),
+      ]);
+      const meta: Record<string, { is_fragile: boolean; reinforced_cost: number; is_free_shipping: boolean }> = {};
+      (products || []).forEach((p: any) => {
+        meta[p.id] = {
+          is_fragile: !!p.is_fragile,
+          reinforced_cost: Number(p.reinforced_packaging_cost) || 0,
+          is_free_shipping: !!p.is_free_shipping,
+        };
+      });
+      setProductMeta(meta);
+      const globalDefault = Number((settings as any)?.value) || 0;
+      setGlobalReinforcedCost(globalDefault);
+    })();
+  }, [cartProductIds.join(',')]);
+
+  // Cart-level fragile / free shipping detection
+  const hasFragile = items.some((it) => productMeta[it.product.id]?.is_fragile);
+  const allFreeShipping = items.length > 0 && items.every((it) =>
+    productMeta[it.product.id]?.is_free_shipping || it.product.isFreeShippingEligible
+  );
+
+  // Reinforced packaging cost = sum of per-product overrides, falling back to global default
+  const reinforcedPackagingCost = useMemo(() => {
+    if (!hasFragile || packagingChoice !== 'reinforced') return 0;
+    let total = 0;
+    items.forEach((it) => {
+      const m = productMeta[it.product.id];
+      if (!m?.is_fragile) return;
+      const cost = m.reinforced_cost > 0 ? m.reinforced_cost : globalReinforcedCost;
+      total += cost * it.quantity;
+    });
+    return total;
+  }, [items, productMeta, globalReinforcedCost, hasFragile, packagingChoice]);
 
   // Fetch shipping classes that are allowed for ALL products in cart
   const fetchShippingClasses = async () => {
@@ -269,8 +329,10 @@ export default function Checkout() {
   };
 
   const selectedShipping = shippingClasses.find(s => s.id === selectedShippingId);
-  const shippingCost = selectedShipping?.base_price || 0;
-  
+  // Free shipping override: if every cart item is marked free shipping, force shipping cost to 0
+  const rawShippingCost = selectedShipping?.base_price || 0;
+  const shippingCost = allFreeShipping ? 0 : rawShippingCost;
+
   // Calculate discount
   const calculateDiscount = () => {
     if (!appliedCoupon) return 0;
@@ -279,9 +341,11 @@ export default function Checkout() {
     }
     return appliedCoupon.value;
   };
-  
+
   const discount = calculateDiscount();
-  const total = subtotal + shippingCost - discount;
+  const subtotalBeforeWallet = subtotal + shippingCost + reinforcedPackagingCost - discount;
+  const walletApplied = useWalletCredit ? Math.min(walletBalance, subtotalBeforeWallet) : 0;
+  const total = Math.max(0, subtotalBeforeWallet - walletApplied);
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
@@ -493,11 +557,30 @@ export default function Checkout() {
           notes: null,
           estimated_delivery_start: new Date(Date.now() + (selectedShipping?.estimated_days_min || 7) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           estimated_delivery_end: new Date(Date.now() + (selectedShipping?.estimated_days_max || 14) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          packaging_type: hasFragile ? packagingChoice : null,
+          packaging_cost: reinforcedPackagingCost,
+          wallet_credit_used: walletApplied,
         }])
         .select()
         .single();
 
       if (orderError) throw orderError;
+
+      // Debit wallet if used
+      if (walletApplied > 0 && user?.id) {
+        try {
+          await (supabase as any).from('wallet_transactions').insert({
+            user_id: user.id,
+            amount: walletApplied,
+            type: 'debit',
+            description: `Used for order ${order.order_number}`,
+            order_id: order.id,
+            created_by: user.id,
+          });
+        } catch (e) {
+          console.error('Wallet debit failed (non-blocking):', e);
+        }
+      }
 
       // Create order items
       const orderItems = items.map(item => ({
@@ -867,7 +950,102 @@ export default function Checkout() {
               </CardContent>
             </Card>
 
-            {/* Order Items Summary */}
+            {/* Fragile Packaging */}
+            {hasFragile && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-primary" />
+                    Packaging for Fragile Items
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <RadioGroup
+                    value={packagingChoice}
+                    onValueChange={(v) => {
+                      if (v === 'standard') {
+                        setShowStandardWarning(true);
+                      } else {
+                        setPackagingChoice('reinforced');
+                      }
+                    }}
+                  >
+                    <div className="space-y-3">
+                      <div
+                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                          packagingChoice === 'reinforced' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                        }`}
+                        onClick={() => setPackagingChoice('reinforced')}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <RadioGroupItem value="reinforced" id="pack-reinforced" />
+                            <div>
+                              <p className="font-medium text-foreground">Reinforced Protection</p>
+                              <p className="text-sm text-muted-foreground">
+                                Extra cushioning and protection for fragile items.
+                              </p>
+                            </div>
+                          </div>
+                          <p className="font-semibold text-foreground">
+                            +{formatPrice(reinforcedPackagingCost || globalReinforcedCost)}
+                          </p>
+                        </div>
+                      </div>
+                      <div
+                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                          packagingChoice === 'standard' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                        }`}
+                        onClick={() => setShowStandardWarning(true)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <RadioGroupItem value="standard" id="pack-standard" />
+                            <div>
+                              <p className="font-medium text-foreground">Standard Packaging</p>
+                              <p className="text-sm text-muted-foreground">
+                                Factory packaging only — no extra protection.
+                              </p>
+                            </div>
+                          </div>
+                          <p className="font-semibold text-foreground">Free</p>
+                        </div>
+                      </div>
+                    </div>
+                  </RadioGroup>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Wallet credit */}
+            {walletBalance > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5 text-primary" />
+                    Wallet Credit
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <Checkbox
+                      checked={useWalletCredit}
+                      onCheckedChange={(c) => setUseWalletCredit(!!c)}
+                      className="mt-1"
+                    />
+                    <div>
+                      <p className="font-medium text-foreground">
+                        Use wallet credit ({formatPrice(walletBalance)} available)
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Apply your store credit toward this order. Cannot be withdrawn.
+                      </p>
+                    </div>
+                  </label>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle>Order Items ({items.length})</CardTitle>
@@ -953,13 +1131,27 @@ export default function Checkout() {
                     <span className="text-foreground">{formatPrice(subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Shipping</span>
+                    <span className="text-muted-foreground">
+                      Shipping{allFreeShipping && rawShippingCost > 0 ? ' (free)' : ''}
+                    </span>
                     <span className="text-foreground">{formatPrice(shippingCost)}</span>
                   </div>
+                  {reinforcedPackagingCost > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Reinforced Packaging</span>
+                      <span className="text-foreground">{formatPrice(reinforcedPackagingCost)}</span>
+                    </div>
+                  )}
                   {appliedCoupon && (
                     <div className="flex justify-between text-sm text-green-600">
                       <span>Discount</span>
                       <span>-{formatPrice(discount)}</span>
+                    </div>
+                  )}
+                  {walletApplied > 0 && (
+                    <div className="flex justify-between text-sm text-primary">
+                      <span>Wallet Credit</span>
+                      <span>-{formatPrice(walletApplied)}</span>
                     </div>
                   )}
                   <Separator />
@@ -1028,6 +1220,46 @@ export default function Checkout() {
                 disabled={isProcessing}
               >
                 {isProcessing ? 'Checking...' : 'Check My Payment'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Standard Packaging Damage Disclaimer */}
+      <Dialog open={showStandardWarning} onOpenChange={setShowStandardWarning}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangleIcon className="h-5 w-5 text-destructive" />
+              Damage Disclaimer
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-foreground">
+              By choosing <span className="font-semibold">Standard Packaging</span>, you accept full
+              responsibility for any physical damage during transit. No refunds or replacements
+              will be issued with this option.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  setPackagingChoice('reinforced');
+                  setShowStandardWarning(false);
+                }}
+              >
+                Switch to Reinforced
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setPackagingChoice('standard');
+                  setShowStandardWarning(false);
+                }}
+              >
+                Proceed Anyway
               </Button>
             </div>
           </div>

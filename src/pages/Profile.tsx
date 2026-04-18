@@ -27,6 +27,8 @@ import { PushNotificationSettings } from '@/components/profile/PushNotificationS
 import { RefundRequestDialog } from '@/components/orders/RefundRequestDialog';
 import { useReferral } from '@/hooks/useReferral';
 import { useLoyaltyPoints } from '@/hooks/useLoyaltyPoints';
+import { WalletSection } from '@/components/profile/WalletSection';
+import { Wallet } from 'lucide-react';
 
 interface Profile {
   name: string | null;
@@ -422,30 +424,34 @@ export default function Profile() {
         <h1 className="text-3xl font-bold font-serif text-foreground mb-8">My Account</h1>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 mb-8">
+          <TabsList className="grid w-full grid-cols-4 md:grid-cols-7 mb-8 h-auto">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
-              Profile
+              <span className="hidden sm:inline">Profile</span>
             </TabsTrigger>
             <TabsTrigger value="addresses" className="flex items-center gap-2">
               <MapPin className="h-4 w-4" />
-              Addresses
+              <span className="hidden sm:inline">Addresses</span>
             </TabsTrigger>
             <TabsTrigger value="orders" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
-              Orders
+              <span className="hidden sm:inline">Orders</span>
+            </TabsTrigger>
+            <TabsTrigger value="wallet" className="flex items-center gap-2">
+              <Wallet className="h-4 w-4" />
+              <span className="hidden sm:inline">Wallet</span>
             </TabsTrigger>
             <TabsTrigger value="refunds" className="flex items-center gap-2">
               <RefreshCcw className="h-4 w-4" />
-              Refunds
+              <span className="hidden sm:inline">Refunds</span>
             </TabsTrigger>
             <TabsTrigger value="referral" className="flex items-center gap-2">
               <Gift className="h-4 w-4" />
-              Referral
+              <span className="hidden sm:inline">Referral</span>
             </TabsTrigger>
             <TabsTrigger value="loyalty" className="flex items-center gap-2">
               <Award className="h-4 w-4" />
-              Points
+              <span className="hidden sm:inline">Points</span>
             </TabsTrigger>
           </TabsList>
 
@@ -823,6 +829,11 @@ export default function Profile() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Wallet Tab */}
+          <TabsContent value="wallet">
+            <WalletSection />
           </TabsContent>
 
           {/* Refunds Tab */}

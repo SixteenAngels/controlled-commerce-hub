@@ -558,13 +558,10 @@ export default function MyOrders() {
                   return (
                     <Card key={order.id} className="overflow-hidden">
                       <CardContent className="p-0">
-                        {/* Order Header */}
-                        <button
-                          className="w-full text-left p-4 bg-muted/50 border-b border-border"
-                          onClick={() => toggleOrderExpansion(order.id)}
-                        >
+                        {/* Order Header (not a button — actions live below) */}
+                        <div className="p-4 bg-muted/50 border-b border-border">
                           <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
                               {order.order_items[0] && (
                                 <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-border bg-muted">
                                   {productImages[order.order_items[0].product_variant_id] ? (
@@ -594,7 +591,6 @@ export default function MyOrders() {
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               {getStatusBadge(order.status)}
-                              {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
                             </div>
                           </div>
 
@@ -609,7 +605,54 @@ export default function MyOrders() {
                               </Badge>
                             )}
                           </div>
-                        </button>
+
+                          {/* Quick action row — always visible */}
+                          <div className="grid grid-cols-3 gap-2 mt-3">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => toggleOrderExpansion(order.id)}
+                              className="w-full"
+                            >
+                              <Eye className="h-3.5 w-3.5 mr-1" />
+                              {isExpanded ? 'Hide' : 'Details'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleBuyAgain(order)}
+                              className="w-full"
+                            >
+                              <ShoppingBag className="h-3.5 w-3.5 mr-1" />
+                              Buy Again
+                            </Button>
+                            {order.status === 'delivered' ? (
+                              <Button
+                                size="sm"
+                                onClick={() => setReviewDialogOrder(order)}
+                                className="w-full"
+                              >
+                                <Star className="h-3.5 w-3.5 mr-1" />
+                                Review
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                onClick={() => handleConfirmDelivery(order)}
+                                disabled={order.status !== 'out_for_delivery' && order.status !== 'ready_for_delivery'}
+                                className="w-full"
+                                title={
+                                  order.status !== 'out_for_delivery' && order.status !== 'ready_for_delivery'
+                                    ? 'Available once order is out for delivery'
+                                    : undefined
+                                }
+                              >
+                                <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                Confirm
+                              </Button>
+                            )}
+                          </div>
+                        </div>
 
                         {/* Expanded content */}
                         {isExpanded && (
