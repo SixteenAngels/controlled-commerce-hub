@@ -186,11 +186,26 @@ export default function Auth() {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
-    const { error } = await signInWithGoogle();
-    setIsGoogleLoading(false);
-    
-    if (error) {
-      toast.error(error.message);
+    try {
+      const { error } = await signInWithGoogle();
+      if (error) {
+        const msg = error.message || '';
+        if (/access.?blocked|disallowed_useragent|redirect_uri_mismatch|invalid_client/i.test(msg)) {
+          toast.error(
+            'Google blocked this sign-in. The OAuth client is misconfigured — verify the callback URL and authorized origins, or switch to Lovable-managed Google credentials.'
+          );
+        } else if (/popup|window.?closed|cancel/i.test(msg)) {
+          toast.error('Sign-in was cancelled.');
+        } else if (/network|fetch/i.test(msg)) {
+          toast.error('Network error. Check your connection and try again.');
+        } else {
+          toast.error(`Google sign-in failed: ${msg || 'Unknown error'}`);
+        }
+      }
+    } catch (err) {
+      toast.error('Google sign-in failed unexpectedly. Please try again.');
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
