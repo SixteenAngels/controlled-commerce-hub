@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useMessageTemplates } from '@/hooks/useMessageTemplates';
 import { SwipeableOrderCard } from './SwipeableOrderCard';
+import { SwipeHintOverlay } from './SwipeHintOverlay';
 
 const ORDER_STATUSES = [
   'pending',
@@ -395,6 +396,7 @@ export function AdminOrders() {
 
   return (
     <div>
+      <SwipeHintOverlay />
       {newOrderAlert && (
         <Alert className="mb-4 border-green-500/50 bg-green-500/10">
           <BellRing className="h-4 w-4 text-green-600" />
