@@ -43,12 +43,21 @@ export function SwipeableOrderCard({
   const SWIPE_THRESHOLD = 120;
 
   const handleDragEnd = (_e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const vibrate = (pattern: number | number[]) => {
+      try {
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          navigator.vibrate(pattern);
+        }
+      } catch {}
+    };
     if (info.offset.x > SWIPE_THRESHOLD && onSwipeRight) {
       setCommitted('right');
+      vibrate([15, 40, 25]);
       onSwipeRight();
       setTimeout(() => setCommitted(null), 600);
     } else if (info.offset.x < -SWIPE_THRESHOLD && onSwipeLeft) {
       setCommitted('left');
+      vibrate(30);
       onSwipeLeft();
       setTimeout(() => setCommitted(null), 600);
     }
